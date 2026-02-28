@@ -535,15 +535,15 @@ func TestShowJSONDiff(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
-			old := os.Stdout
+			// Capture stderr
+			old := os.Stderr
 			r, w, _ := os.Pipe()
-			os.Stdout = w
+			os.Stderr = w
 
 			showJSONDiff([]byte(tt.oldData), []byte(tt.newData), tt.resourceType)
 
 			_ = w.Close()
-			os.Stdout = old
+			os.Stderr = old
 
 			var buf bytes.Buffer
 			_, _ = io.Copy(&buf, r)
