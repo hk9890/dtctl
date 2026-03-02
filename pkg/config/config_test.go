@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/adrg/xdg"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -340,28 +342,18 @@ func TestConfig_MultipleContexts(t *testing.T) {
 
 func TestConfig_Save(t *testing.T) {
 	// Create temp directory
-	tmpDir, err := os.MkdirTemp("", "dtctl-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		_ = os.RemoveAll(tmpDir)
-	}()
+	tmpDir := t.TempDir()
 
 	// Override XDG for this test
-	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	if err := os.Setenv("XDG_CONFIG_HOME", tmpDir); err != nil {
-		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
-	}
-	defer func() {
-		_ = os.Setenv("XDG_CONFIG_HOME", origXDG)
-	}()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	xdg.Reload()
+	defer xdg.Reload()
 
 	cfg := NewConfig()
 	cfg.SetContext("test", "https://test.dt.com", "token")
 
 	// Save should work (creates directory if needed)
-	err = cfg.Save()
+	err := cfg.Save()
 	if err != nil {
 		t.Errorf("Save() error = %v", err)
 	}

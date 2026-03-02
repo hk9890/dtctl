@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/adrg/xdg"
 	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/spf13/viper"
 )
@@ -25,6 +26,8 @@ func TestConfigFlagRespected(t *testing.T) {
 	// Mock XDG_CONFIG_HOME to point to our temp default dir
 	// This ensures valid Load() calls would go here if --config is ignored
 	t.Setenv("XDG_CONFIG_HOME", defaultConfigDir)
+	xdg.Reload()
+	defer xdg.Reload()
 
 	// Save original cfgFile value and restore after test
 	originalCfgFile := cfgFile
