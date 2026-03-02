@@ -227,7 +227,7 @@ func createDocumentRunE(docType string) func(cmd *cobra.Command, args []string) 
 			fmt.Printf("  %s: %d\n", capitalize(itemName(docType)), tileCount)
 		}
 		if result.ID != "" {
-			fmt.Printf("  URL:  %s/ui/document/v0/#/%ss/%s\n", c.BaseURL(), docType, result.ID)
+			fmt.Printf("  URL:  %s/ui/apps/dynatrace.%ss/%s/%s\n", c.BaseURL(), docType, docType, result.ID)
 		}
 		return nil
 	}

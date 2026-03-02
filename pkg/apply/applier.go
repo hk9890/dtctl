@@ -655,15 +655,15 @@ func showJSONDiff(oldData, newData []byte, resourceType string) {
 
 // documentURL returns the UI URL for a document
 func (a *Applier) documentURL(docType, id string) string {
-	// Convert base API URL to apps URL
-	// e.g., https://abc12345.apps.dynatrace.com -> https://abc12345.apps.dynatrace.com/ui/document/<type>/<id>
+	// Build the app-based URL for the document
+	// e.g., https://abc12345.apps.dynatrace.com -> https://abc12345.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/<id>
 	switch docType {
 	case "dashboard":
-		return fmt.Sprintf("%s/ui/document/v0/#/dashboards/%s", a.baseURL, id)
+		return fmt.Sprintf("%s/ui/apps/dynatrace.dashboards/dashboard/%s", a.baseURL, id)
 	case "notebook":
-		return fmt.Sprintf("%s/ui/document/v0/#/notebooks/%s", a.baseURL, id)
+		return fmt.Sprintf("%s/ui/apps/dynatrace.notebooks/notebook/%s", a.baseURL, id)
 	default:
-		return fmt.Sprintf("%s/ui/document/v0/#/%ss/%s", a.baseURL, docType, id)
+		return fmt.Sprintf("%s/ui/apps/dynatrace.%ss/%s/%s", a.baseURL, docType, docType, id)
 	}
 }
 

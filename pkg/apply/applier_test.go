@@ -571,21 +571,21 @@ func TestDocumentURL(t *testing.T) {
 			baseURL:  "https://abc12345.apps.dynatrace.com",
 			docType:  "dashboard",
 			id:       "doc-123",
-			expected: "https://abc12345.apps.dynatrace.com/ui/document/v0/#/dashboards/doc-123",
+			expected: "https://abc12345.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/doc-123",
 		},
 		{
 			name:     "notebook URL",
 			baseURL:  "https://abc12345.apps.dynatrace.com",
 			docType:  "notebook",
 			id:       "nb-456",
-			expected: "https://abc12345.apps.dynatrace.com/ui/document/v0/#/notebooks/nb-456",
+			expected: "https://abc12345.apps.dynatrace.com/ui/apps/dynatrace.notebooks/notebook/nb-456",
 		},
 		{
 			name:     "other document type URL",
 			baseURL:  "https://tenant.apps.dynatrace.com",
 			docType:  "report",
 			id:       "rpt-789",
-			expected: "https://tenant.apps.dynatrace.com/ui/document/v0/#/reports/rpt-789",
+			expected: "https://tenant.apps.dynatrace.com/ui/apps/dynatrace.reports/report/rpt-789",
 		},
 	}
 
