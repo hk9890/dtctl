@@ -770,7 +770,7 @@ dtctl apply -f dashboard.yaml
 
 # Both commands show tile count and URL:
 # Dashboard "My Dashboard" (abc-123) created successfully [18 tiles]
-# URL: https://env.apps.dynatrace.com/ui/document/v0/#/dashboards/abc-123
+# URL: https://env.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/abc-123
 ```
 
 **When to use which:**
