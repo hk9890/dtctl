@@ -61,6 +61,15 @@ Examples:
   # See what changed when updating
   dtctl apply -f dashboard.yaml --show-diff
 
+  # Apply and get JSON output (for scripting/CI)
+  dtctl apply -f dashboard.yaml -o json
+
+  # Apply and get YAML output
+  dtctl apply -f workflow.yaml -o yaml
+
+  # Apply with wide table (includes URL for dashboards/notebooks)
+  dtctl apply -f notebook.yaml -o wide
+
 Note: To update a dashboard via command line, use the apply command with a file
 that contains the dashboard ID. The 'create' command always creates new resources.
 `,
@@ -118,7 +127,29 @@ that contains the dashboard ID. The 'create' command always creates new resource
 			ShowDiff:     showDiff,
 		}
 
-		return applier.Apply(fileData, opts)
+		results, err := applier.Apply(fileData, opts)
+		if err != nil {
+			return err
+		}
+
+		// dry-run returns nil results (output handled internally on stderr)
+		if results == nil {
+			return nil
+		}
+
+		// Print structured output using the global -o flag.
+		// The concrete type (DashboardApplyResult, WorkflowApplyResult, etc.)
+		// determines which columns/fields appear in the output.
+		printer := NewPrinter()
+		if len(results) == 1 {
+			return printer.Print(results[0])
+		}
+		// Multiple results (e.g., connection list apply) — use list output
+		items := make([]interface{}, len(results))
+		for i, r := range results {
+			items[i] = r
+		}
+		return printer.PrintList(items)
 	},
 }
 
