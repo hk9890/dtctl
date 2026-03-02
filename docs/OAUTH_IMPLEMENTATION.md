@@ -200,7 +200,7 @@ dtctl query "fetch logs | limit 10"
 dtctl auth logout production
 ```
 
-##Advantages Over API Tokens
+## Advantages Over API Tokens
 
 1. **No Manual Token Management** - Tokens automatically refreshed
 2. **SSO Integration** - Use existing Dynatrace credentials  
