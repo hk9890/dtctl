@@ -1,2 +1,6 @@
 resources:
     - package/opencode-coder
+    - skill/dynatrace-control
+    - skill/github-task-sync
+    - skill/fix-documentation
+    - skill/dt-dql-essentials
