@@ -151,7 +151,7 @@ you'll need to use API token authentication instead (dtctl config set-credential
 		tokenName, _ := cmd.Flags().GetString("token-name")
 		timeoutStr, _ := cmd.Flags().GetString("timeout")
 		safetyLevelStr, _ := cmd.Flags().GetString("safety-level")
-		
+
 		// Validate required flags
 		if contextName == "" {
 			return fmt.Errorf("--context is required")
@@ -159,18 +159,18 @@ you'll need to use API token authentication instead (dtctl config set-credential
 		if environment == "" {
 			return fmt.Errorf("--environment is required")
 		}
-		
+
 		// Default token name to context name if not provided
 		if tokenName == "" {
 			tokenName = contextName + "-oauth"
 		}
-		
+
 		// Parse timeout
 		timeout, err := time.ParseDuration(timeoutStr)
 		if err != nil {
 			return fmt.Errorf("invalid timeout: %w", err)
 		}
-		
+
 		// Parse and validate safety level
 		safetyLevel := config.SafetyLevel(safetyLevelStr)
 		if safetyLevelStr == "" {
@@ -178,45 +178,45 @@ you'll need to use API token authentication instead (dtctl config set-credential
 		} else if !safetyLevel.IsValid() {
 			return fmt.Errorf("invalid safety level: %s (valid values: %v)", safetyLevelStr, config.ValidSafetyLevels())
 		}
-		
+
 		// Load config
 		cfg, err := LoadConfig()
 		if err != nil {
 			// If config doesn't exist, create a new one
 			cfg = config.NewConfig()
 		}
-		
+
 		// Ensure keyring is available before starting OAuth flow
 		if !config.IsKeyringAvailable() {
 			return fmt.Errorf("OAuth login requires a working system keyring, but none is available. Please configure a keyring (or disable keyring usage if supported) and try again, or use an alternative authentication method.")
 		}
-		
+
 		// Detect environment and create appropriate OAuth config with safety level
 		oauthConfig := auth.OAuthConfigFromEnvironmentURLWithSafety(environment, safetyLevel)
-		
+
 		// Log which environment we detected
 		fmt.Printf("Detected environment: %s\n", oauthConfig.Environment)
 		fmt.Printf("Safety level: %s\n", oauthConfig.SafetyLevel)
 		fmt.Printf("Requesting OAuth scopes for safety level %s...\n", oauthConfig.SafetyLevel)
-		
+
 		// Create OAuth flow
 		flow, err := auth.NewOAuthFlow(oauthConfig)
 		if err != nil {
 			return fmt.Errorf("failed to initialize OAuth: %w", err)
 		}
-		
+
 		// Start OAuth flow with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		
+
 		fmt.Println("Starting OAuth authentication flow...")
 		tokens, err := flow.Start(ctx)
 		if err != nil {
 			return fmt.Errorf("authentication failed: %w", err)
 		}
-		
+
 		fmt.Println("✓ Authentication successful!")
-		
+
 		// Get user info
 		userInfo, err := flow.GetUserInfo(tokens.AccessToken)
 		if err != nil {
@@ -224,33 +224,33 @@ you'll need to use API token authentication instead (dtctl config set-credential
 		} else {
 			fmt.Printf("Logged in as: %s (%s)\n", userInfo.Name, userInfo.Email)
 		}
-		
+
 		// Store tokens
 		tokenManager, err := auth.NewTokenManager(oauthConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create token manager: %w", err)
 		}
-		
+
 		if err := tokenManager.SaveToken(tokenName, tokens); err != nil {
 			return fmt.Errorf("failed to store tokens: %w", err)
 		}
-		
+
 		fmt.Printf("✓ Tokens stored securely as '%s'\n", tokenName)
-		
+
 		// Create or update context with safety level
 		cfg.SetContextWithOptions(contextName, environment, tokenName, &config.ContextOptions{
 			SafetyLevel: safetyLevel,
 		})
 		cfg.CurrentContext = contextName
-		
-		// Save config
-		if err := cfg.Save(); err != nil {
+
+		// Save config (respects local .dtctl.yaml if present)
+		if err := saveConfig(cfg); err != nil {
 			return fmt.Errorf("failed to save config: %w", err)
 		}
-		
+
 		fmt.Printf("✓ Context '%s' configured and activated\n", contextName)
 		fmt.Println("\nYou can now use dtctl commands with this context.")
-		
+
 		return nil
 	},
 }
@@ -280,7 +280,7 @@ If no context name is provided, the current context will be used.`,
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
-		
+
 		// Determine context name
 		var contextName string
 		if len(args) > 0 {
@@ -288,57 +288,57 @@ If no context name is provided, the current context will be used.`,
 		} else {
 			contextName = cfg.CurrentContext
 		}
-		
+
 		if contextName == "" {
 			return fmt.Errorf("no context specified and no current context set")
 		}
-		
+
 		// Find context
 		ctx, err := cfg.GetContext(contextName)
 		if err != nil {
 			return fmt.Errorf("context not found: %w", err)
 		}
-		
+
 		// Get token name
 		tokenName := ctx.Context.TokenRef
 		if tokenName == "" {
 			return fmt.Errorf("context has no token reference")
 		}
-		
+
 		// Detect environment from context URL
 		oauthConfig := auth.OAuthConfigFromEnvironmentURLWithSafety(ctx.Context.Environment, ctx.Context.SafetyLevel)
-		
+
 		// Delete OAuth token
 		tokenManager, err := auth.NewTokenManager(oauthConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create token manager: %w", err)
 		}
-		
+
 		if err := tokenManager.DeleteToken(tokenName); err != nil {
 			fmt.Printf("Warning: Failed to delete token from keyring: %v\n", err)
 		} else {
 			fmt.Printf("✓ Removed OAuth token '%s'\n", tokenName)
 		}
-		
+
 		// Optionally remove context
 		removeContext, _ := cmd.Flags().GetBool("remove-context")
 		if removeContext {
 			if err := cfg.DeleteContext(contextName); err != nil {
 				return fmt.Errorf("failed to remove context: %w", err)
 			}
-			
+
 			// If we deleted the current context, clear it
 			if cfg.CurrentContext == contextName {
 				cfg.CurrentContext = ""
 			}
-			
-			if err := cfg.Save(); err != nil {
+
+			if err := saveConfig(cfg); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
-			
+
 			fmt.Printf("✓ Removed context '%s'\n", contextName)
 		}
-		
+
 		return nil
 	},
 }
@@ -363,7 +363,7 @@ to force a refresh.`,
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
-		
+
 		// Determine context name
 		var contextName string
 		if len(args) > 0 {
@@ -371,41 +371,41 @@ to force a refresh.`,
 		} else {
 			contextName = cfg.CurrentContext
 		}
-		
+
 		if contextName == "" {
 			return fmt.Errorf("no context specified and no current context set")
 		}
-		
+
 		// Find context
 		ctx, err := cfg.GetContext(contextName)
 		if err != nil {
 			return fmt.Errorf("context not found: %w", err)
 		}
-		
+
 		// Get token name
 		tokenName := ctx.Context.TokenRef
 		if tokenName == "" {
 			return fmt.Errorf("context has no token reference")
 		}
-		
+
 		// Detect environment from context URL
 		oauthConfig := auth.OAuthConfigFromEnvironmentURLWithSafety(ctx.Context.Environment, ctx.Context.SafetyLevel)
-		
+
 		// Refresh token
 		tokenManager, err := auth.NewTokenManager(oauthConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create token manager: %w", err)
 		}
-		
+
 		fmt.Println("Refreshing OAuth tokens...")
 		tokens, err := tokenManager.RefreshToken(tokenName)
 		if err != nil {
 			return fmt.Errorf("failed to refresh tokens: %w", err)
 		}
-		
+
 		fmt.Println("✓ Tokens refreshed successfully")
 		fmt.Printf("New token expires at: %s\n", tokens.ExpiresAt.Format(time.RFC3339))
-		
+
 		return nil
 	},
 }
@@ -421,7 +421,7 @@ func init() {
 	// Flags for whoami
 	authWhoamiCmd.Flags().BoolVar(&idOnly, "id-only", false, "output only the user ID")
 	authWhoamiCmd.Flags().BoolVar(&refresh, "refresh", false, "force refresh of cached user info")
-	
+
 	// Flags for login
 	authLoginCmd.Flags().String("context", "", "name for the context to create (required)")
 	authLoginCmd.Flags().String("environment", "", "Dynatrace environment URL (required)")
@@ -430,7 +430,7 @@ func init() {
 	authLoginCmd.Flags().String("safety-level", string(config.DefaultSafetyLevel), "safety level for the context (readonly, readwrite-mine, readwrite-all, dangerously-unrestricted)")
 	authLoginCmd.MarkFlagRequired("context")
 	authLoginCmd.MarkFlagRequired("environment")
-	
+
 	// Flags for logout
 	authLogoutCmd.Flags().Bool("remove-context", false, "also remove the context configuration")
 }
