@@ -9,7 +9,8 @@ formatters:
     - goimports
   settings:
     goimports:
-      local-prefixes: github.com/dynatrace-oss/dtctl
+      local-prefixes:
+        - github.com/dynatrace-oss/dtctl
 
 linters:
   enable:
