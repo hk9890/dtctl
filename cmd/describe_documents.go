@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/resolver"
-	"github.com/spf13/cobra"
 )
 
 // describeDashboardCmd shows detailed info about a dashboard

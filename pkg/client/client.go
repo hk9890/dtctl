@@ -12,11 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
+
 	"github.com/dynatrace-oss/dtctl/pkg/aidetect"
 	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/dynatrace-oss/dtctl/pkg/version"
-	"github.com/go-resty/resty/v2"
-	"github.com/sirupsen/logrus"
 )
 
 // Client is the base HTTP client for dtctl

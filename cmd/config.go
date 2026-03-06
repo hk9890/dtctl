@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 
 // loadConfigRaw loads configuration respecting the --config flag but WITHOUT applying

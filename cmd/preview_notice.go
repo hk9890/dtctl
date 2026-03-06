@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/spf13/cobra"
+
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 )
 
 var previewNoticeShown = map[string]bool{}

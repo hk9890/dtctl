@@ -5,11 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpconnection"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpmonitoringconfig"
-	"github.com/spf13/cobra"
 )
 
 var describeGCPConnectionCmd = &cobra.Command{

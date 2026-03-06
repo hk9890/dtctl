@@ -34,8 +34,8 @@ func NewChartPrinter(writer io.Writer) *ChartPrinter {
 	width, height := GetTerminalSize()
 	// Leave margin for y-axis labels and headers
 	// Headers: live mode (2 lines) + timeframe (2 lines) + legend (~3 lines) = 7 lines
-	width = width - 15
-	height = height - 12
+	width -= 15
+	height -= 12
 	if width < 40 {
 		width = 40
 	}

@@ -87,7 +87,7 @@ func TestParseOrDefaultLocationsAndFeatureSets(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(ExtensionSchemaResponse{Enums: map[string]SchemaEnum{
 			"dynatrace.datasource.azure:location": {Items: []SchemaEnumItem{{Value: "eastus"}, {Value: "westeurope"}}},
-			"FeatureSetsType":                  {Items: []SchemaEnumItem{{Value: "logs_essential"}, {Value: "metrics_all"}}},
+			"FeatureSetsType":                     {Items: []SchemaEnumItem{{Value: "logs_essential"}, {Value: "metrics_all"}}},
 		}})
 	})
 	defer server.Close()
@@ -150,13 +150,13 @@ func TestParseOrDefaultFeatureSets_NoEssential(t *testing.T) {
 func TestResolveCredential(t *testing.T) {
 	t.Run("resolve by name client secret", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			if r.Method == http.MethodGet && r.URL.Query().Get("schemaIds") != "" {
 				_ = json.NewEncoder(w).Encode(azureconnection.ListResponse{Items: []azureconnection.AzureConnection{{
 					ObjectID: "obj-1",
 					Value: azureconnection.Value{
-						Name: "conn-a",
-						Type: "clientSecret",
+						Name:         "conn-a",
+						Type:         "clientSecret",
 						ClientSecret: &azureconnection.ClientSecretCredential{ApplicationID: "app-1"},
 					},
 				}}})
@@ -184,7 +184,7 @@ func TestResolveCredential(t *testing.T) {
 
 	t.Run("resolve by id fallback federated", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			if r.Method == http.MethodGet && r.URL.Query().Get("schemaIds") != "" {
 				_ = json.NewEncoder(w).Encode(azureconnection.ListResponse{Items: []azureconnection.AzureConnection{}})
 				return
@@ -193,8 +193,8 @@ func TestResolveCredential(t *testing.T) {
 				_ = json.NewEncoder(w).Encode(azureconnection.AzureConnection{
 					ObjectID: "obj-2",
 					Value: azureconnection.Value{
-						Name: "conn-b",
-						Type: "federatedIdentityCredential",
+						Name:                        "conn-b",
+						Type:                        "federatedIdentityCredential",
 						FederatedIdentityCredential: &azureconnection.FederatedIdentityCredential{ApplicationID: "app-fed"},
 					},
 				})

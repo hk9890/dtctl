@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/spf13/cobra"
+
+	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 
 // ctxCmd is a top-level shortcut for context management.

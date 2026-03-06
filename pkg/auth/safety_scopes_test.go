@@ -9,11 +9,11 @@ import (
 // TestGetScopesForSafetyLevel tests that scopes are correctly assigned for each safety level
 func TestGetScopesForSafetyLevel(t *testing.T) {
 	tests := []struct {
-		name              string
-		safetyLevel       config.SafetyLevel
-		mustInclude       []string // Scopes that MUST be present
-		mustNotInclude    []string // Scopes that MUST NOT be present
-		minScopeCount     int      // Minimum number of scopes expected
+		name           string
+		safetyLevel    config.SafetyLevel
+		mustInclude    []string // Scopes that MUST be present
+		mustNotInclude []string // Scopes that MUST NOT be present
+		minScopeCount  int      // Minimum number of scopes expected
 	}{
 		{
 			name:        "readonly scopes",
@@ -159,27 +159,27 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 // TestOAuthConfigWithSafetyLevel tests that OAuth config properly integrates safety levels
 func TestOAuthConfigWithSafetyLevel(t *testing.T) {
 	tests := []struct {
-		name        string
-		env         Environment
-		safetyLevel config.SafetyLevel
+		name         string
+		env          Environment
+		safetyLevel  config.SafetyLevel
 		expectScopes int
 	}{
 		{
-			name:        "Production with readonly",
-			env:         EnvironmentProd,
-			safetyLevel: config.SafetyLevelReadOnly,
+			name:         "Production with readonly",
+			env:          EnvironmentProd,
+			safetyLevel:  config.SafetyLevelReadOnly,
 			expectScopes: 35,
 		},
 		{
-			name:        "Development with readwrite-all",
-			env:         EnvironmentDev,
-			safetyLevel: config.SafetyLevelReadWriteAll,
+			name:         "Development with readwrite-all",
+			env:          EnvironmentDev,
+			safetyLevel:  config.SafetyLevelReadWriteAll,
 			expectScopes: 62,
 		},
 		{
-			name:        "Hardening with dangerously-unrestricted",
-			env:         EnvironmentHard,
-			safetyLevel: config.SafetyLevelDangerouslyUnrestricted,
+			name:         "Hardening with dangerously-unrestricted",
+			env:          EnvironmentHard,
+			safetyLevel:  config.SafetyLevelDangerouslyUnrestricted,
 			expectScopes: 71,
 		},
 	}
@@ -278,7 +278,7 @@ func TestSafetyLevelScopeHierarchy(t *testing.T) {
 	if len(readwriteAll) <= len(readwriteMine) {
 		t.Error("readwrite-all should have more scopes than readwrite-mine")
 	}
-	
+
 	// Verify that dangerously-unrestricted has the most scopes
 	if len(unrestricted) <= len(readwriteAll) {
 		t.Error("dangerously-unrestricted should have more scopes than readwrite-all")

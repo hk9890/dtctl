@@ -831,10 +831,8 @@ func TestConfig_DeleteContext(t *testing.T) {
 			wantCount:   0,
 		},
 		{
-			name: "delete from empty config",
-			setup: func() *Config {
-				return NewConfig()
-			},
+			name:        "delete from empty config",
+			setup:       NewConfig,
 			contextName: "any",
 			wantErr:     true,
 			wantCount:   0,
@@ -974,11 +972,8 @@ func TestConfig_GetToken_KeyringFallback(t *testing.T) {
 	if err == nil {
 		// Either keyring is available and returned token, or should have error
 		t.Log("Keyring available, token retrieved successfully")
-	} else {
-		// Should get specific error about keyring
-		if !strings.Contains(err.Error(), "not found in keyring") {
-			t.Errorf("GetToken() error = %v, want error about keyring", err)
-		}
+	} else if !strings.Contains(err.Error(), "not found in keyring") {
+		t.Errorf("GetToken() error = %v, want error about keyring", err)
 	}
 }
 
@@ -1058,11 +1053,9 @@ func TestSaveTo_MarshalError(t *testing.T) {
 	err := cfg.SaveTo("/root/impossible/path/config")
 	if err == nil {
 		t.Log("Warning: Expected permission error when saving to /root, but succeeded")
-	} else {
-		if !strings.Contains(err.Error(), "failed to create config directory") &&
-			!strings.Contains(err.Error(), "failed to write config file") {
-			t.Errorf("SaveTo() error = %v, want error about directory creation or file write", err)
-		}
+	} else if !strings.Contains(err.Error(), "failed to create config directory") &&
+		!strings.Contains(err.Error(), "failed to write config file") {
+		t.Errorf("SaveTo() error = %v, want error about directory creation or file write", err)
 	}
 }
 

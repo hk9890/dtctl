@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/adrg/xdg"
+
 	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 

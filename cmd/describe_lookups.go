@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dynatrace-oss/dtctl/pkg/resources/lookup"
 	"github.com/spf13/cobra"
+
+	"github.com/dynatrace-oss/dtctl/pkg/resources/lookup"
 )
 
 // describeLookupCmd shows detailed info about a lookup table

@@ -250,11 +250,12 @@ func resampleValues(values []float64, targetLen int) []float64 {
 			highVal := values[highIdx]
 
 			// Handle NaN values
-			if math.IsNaN(lowVal) {
+			switch {
+			case math.IsNaN(lowVal):
 				result[i] = highVal
-			} else if math.IsNaN(highVal) {
+			case math.IsNaN(highVal):
 				result[i] = lowVal
-			} else {
+			default:
 				result[i] = lowVal + frac*(highVal-lowVal)
 			}
 		}

@@ -14,32 +14,32 @@ func TestGeneratePKCE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generatePKCE() failed: %v", err)
 	}
-	
+
 	// Verify verifier is not empty
 	if verifier1 == "" {
 		t.Error("Verifier should not be empty")
 	}
-	
+
 	// Verify challenge is not empty
 	if challenge1 == "" {
 		t.Error("Challenge should not be empty")
 	}
-	
+
 	// Verify they're different
 	if verifier1 == challenge1 {
 		t.Error("Verifier and challenge should be different")
 	}
-	
+
 	// Generate again and ensure randomness (different values)
 	verifier2, challenge2, err := generatePKCE()
 	if err != nil {
 		t.Fatalf("generatePKCE() second call failed: %v", err)
 	}
-	
+
 	if verifier1 == verifier2 {
 		t.Error("PKCE verifier should be random (got same value twice)")
 	}
-	
+
 	if challenge1 == challenge2 {
 		t.Error("PKCE challenge should be random (got same value twice)")
 	}
@@ -56,24 +56,24 @@ func TestGenerateRandomString(t *testing.T) {
 		{"Length 32", 32},
 		{"Length 64", 64},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			str1, err := generateRandomString(tt.length)
 			if err != nil {
 				t.Fatalf("generateRandomString(%d) failed: %v", tt.length, err)
 			}
-			
+
 			if len(str1) != tt.length {
 				t.Errorf("Length = %d, want %d", len(str1), tt.length)
 			}
-			
+
 			// Generate again to verify randomness
 			str2, err := generateRandomString(tt.length)
 			if err != nil {
 				t.Fatalf("generateRandomString(%d) second call failed: %v", tt.length, err)
 			}
-			
+
 			if str1 == str2 {
 				t.Error("Random strings should be different")
 			}
@@ -104,16 +104,16 @@ func TestNewOAuthFlow(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			flow, err := NewOAuthFlow(tt.config)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewOAuthFlow() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err == nil {
 				// Verify flow is properly initialized
 				if flow.config == nil {
@@ -159,7 +159,7 @@ func TestOAuthFlow_buildAuthURL(t *testing.T) {
 			wantURL: hardAuthURL,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OAuthConfigForEnvironment(tt.env, config.DefaultSafetyLevel)
@@ -167,14 +167,14 @@ func TestOAuthFlow_buildAuthURL(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewOAuthFlow() failed: %v", err)
 			}
-			
+
 			authURL := flow.buildAuthURL()
-			
+
 			// Verify base URL
 			if !strings.HasPrefix(authURL, tt.wantURL) {
 				t.Errorf("Auth URL should start with %s, got %s", tt.wantURL, authURL)
 			}
-			
+
 			// Verify required parameters are present
 			requiredParams := []string{
 				"response_type=code",
@@ -185,7 +185,7 @@ func TestOAuthFlow_buildAuthURL(t *testing.T) {
 				"code_challenge=",
 				"code_challenge_method=S256",
 			}
-			
+
 			for _, param := range requiredParams {
 				if !strings.Contains(authURL, param) {
 					t.Errorf("Auth URL missing parameter: %s", param)
@@ -202,14 +202,14 @@ func TestOAuthFlow_getRedirectURI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOAuthFlow() failed: %v", err)
 	}
-	
+
 	redirectURI := flow.getRedirectURI()
-	
+
 	expectedURI := "http://localhost:3232/auth/login"
 	if redirectURI != expectedURI {
 		t.Errorf("Redirect URI = %s, want %s", redirectURI, expectedURI)
 	}
-	
+
 	// Verify it contains required components
 	if !strings.Contains(redirectURI, "localhost") {
 		t.Error("Redirect URI should contain localhost")
@@ -225,7 +225,7 @@ func TestOAuthFlow_getRedirectURI(t *testing.T) {
 // TestTokenSet_ExpiresAt tests token expiration calculation
 func TestTokenSet_ExpiresAt(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		name      string
 		expiresIn int
@@ -247,7 +247,7 @@ func TestTokenSet_ExpiresAt(t *testing.T) {
 			wantAfter: now.Add(23 * time.Hour),
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := &TokenSet{
@@ -255,10 +255,10 @@ func TestTokenSet_ExpiresAt(t *testing.T) {
 				RefreshToken: "test-refresh",
 				ExpiresIn:    tt.expiresIn,
 			}
-			
+
 			// Simulate what the code does
 			token.ExpiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
-			
+
 			if token.ExpiresAt.Before(tt.wantAfter) {
 				t.Errorf("ExpiresAt = %v, should be after %v", token.ExpiresAt, tt.wantAfter)
 			}
@@ -299,14 +299,14 @@ func TestIsTokenExpired(t *testing.T) {
 			want:      true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := &TokenSet{
 				AccessToken: "test",
 				ExpiresAt:   tt.expiresAt,
 			}
-			
+
 			got := IsTokenExpired(token)
 			if got != tt.want {
 				t.Errorf("IsTokenExpired() = %v, want %v (ExpiresAt: %v, Now: %v)",
@@ -329,7 +329,7 @@ func TestTokenManager_needsRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTokenManager() failed: %v", err)
 	}
-	
+
 	tests := []struct {
 		name      string
 		expiresAt time.Time
@@ -361,14 +361,14 @@ func TestTokenManager_needsRefresh(t *testing.T) {
 			want:      false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := &TokenSet{
 				AccessToken: "test",
 				ExpiresAt:   tt.expiresAt,
 			}
-			
+
 			got := tm.needsRefresh(token)
 			if got != tt.want {
 				t.Errorf("needsRefresh() = %v, want %v (ExpiresAt: %v, Now+Buffer: %v)",
@@ -390,9 +390,9 @@ func TestMultiEnvironmentScenario(t *testing.T) {
 		{"Development", EnvironmentDev, "https://abc.dev.apps.dynatracelabs.com", devClientID},
 		{"Hardening", EnvironmentHard, "https://abc.sprint.apps.dynatracelabs.com", hardClientID},
 	}
-	
+
 	tokenName := "multi-env-token"
-	
+
 	for _, env := range environments {
 		t.Run(env.name, func(t *testing.T) {
 			// Detect environment from URL
@@ -400,7 +400,7 @@ func TestMultiEnvironmentScenario(t *testing.T) {
 			if detected != env.env {
 				t.Errorf("DetectEnvironment(%s) = %v, want %v", env.url, detected, env.env)
 			}
-			
+
 			// Create config from URL
 			config := OAuthConfigFromEnvironmentURL(env.url)
 			if config.Environment != env.env {
@@ -409,13 +409,13 @@ func TestMultiEnvironmentScenario(t *testing.T) {
 			if config.ClientID != env.client {
 				t.Errorf("Config client ID = %v, want %v", config.ClientID, env.client)
 			}
-			
+
 			// Create token manager
 			tm, err := NewTokenManager(config)
 			if err != nil {
 				t.Fatalf("NewTokenManager() failed: %v", err)
 			}
-			
+
 			// Verify environment-specific keyring name
 			keyringName := tm.getKeyringName(tokenName)
 			expectedPrefix := "oauth:" + string(env.env) + ":"
@@ -429,14 +429,14 @@ func TestMultiEnvironmentScenario(t *testing.T) {
 // TestOAuthConfigScopes tests that scopes are properly set
 func TestOAuthConfigScopes(t *testing.T) {
 	config := DefaultOAuthConfig()
-	
+
 	if len(config.Scopes) == 0 {
 		t.Error("Scopes should not be empty")
 	}
-	
+
 	// Verify some expected scopes are present
 	expectedScopes := []string{"openid", "storage:logs:read", "storage:buckets:read"}
-	
+
 	for _, expected := range expectedScopes {
 		found := false
 		for _, scope := range config.Scopes {
@@ -449,7 +449,7 @@ func TestOAuthConfigScopes(t *testing.T) {
 			t.Errorf("Expected scope %s not found in: %v", expected, config.Scopes)
 		}
 	}
-	
+
 	// Verify no duplicate scopes
 	seen := make(map[string]bool)
 	for _, scope := range config.Scopes {

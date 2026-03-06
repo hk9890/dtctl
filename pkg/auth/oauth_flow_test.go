@@ -8,9 +8,9 @@ import (
 
 func TestDetectEnvironment(t *testing.T) {
 	tests := []struct {
-		name        string
-		envURL      string
-		wantEnv     Environment
+		name    string
+		envURL  string
+		wantEnv Environment
 	}{
 		{
 			name:    "Production environment",
@@ -56,12 +56,12 @@ func TestDetectEnvironment(t *testing.T) {
 
 func TestOAuthConfigForEnvironment(t *testing.T) {
 	tests := []struct {
-		name           string
-		env            Environment
-		wantAuthURL    string
-		wantTokenURL   string
-		wantUserInfo   string
-		wantClientID   string
+		name         string
+		env          Environment
+		wantAuthURL  string
+		wantTokenURL string
+		wantUserInfo string
+		wantClientID string
 	}{
 		{
 			name:         "Production configuration",
@@ -92,7 +92,7 @@ func TestOAuthConfigForEnvironment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OAuthConfigForEnvironment(tt.env, config.DefaultSafetyLevel)
-			
+
 			if config.AuthURL != tt.wantAuthURL {
 				t.Errorf("AuthURL = %v, want %v", config.AuthURL, tt.wantAuthURL)
 			}
@@ -148,7 +148,7 @@ func TestOAuthConfigFromEnvironmentURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := OAuthConfigFromEnvironmentURL(tt.envURL)
-			
+
 			if config.Environment != tt.wantEnv {
 				t.Errorf("Environment = %v, want %v", config.Environment, tt.wantEnv)
 			}
@@ -161,7 +161,7 @@ func TestOAuthConfigFromEnvironmentURL(t *testing.T) {
 
 func TestDefaultOAuthConfig(t *testing.T) {
 	config := DefaultOAuthConfig()
-	
+
 	// Should return production config by default
 	if config.Environment != EnvironmentProd {
 		t.Errorf("Default environment = %v, want %v", config.Environment, EnvironmentProd)
@@ -178,7 +178,7 @@ func TestEnvironmentConstants(t *testing.T) {
 	// Ensure environment constants are distinct
 	envs := []Environment{EnvironmentProd, EnvironmentDev, EnvironmentHard}
 	seen := make(map[Environment]bool)
-	
+
 	for _, env := range envs {
 		if seen[env] {
 			t.Errorf("Duplicate environment constant: %v", env)

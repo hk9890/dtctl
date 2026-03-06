@@ -6,11 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
 	"github.com/dynatrace-oss/dtctl/pkg/util/format"
 	"github.com/dynatrace-oss/dtctl/pkg/util/template"
-	"github.com/spf13/cobra"
 )
 
 // createNotebookCmd creates a notebook from a file

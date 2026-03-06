@@ -302,9 +302,10 @@ func (h *Handler) Create(req CreateRequest) (*UploadResponse, error) {
 	var dataContent []byte
 	var err error
 
-	if len(req.DataContent) > 0 {
+	switch {
+	case len(req.DataContent) > 0:
 		dataContent = req.DataContent
-	} else if req.DataSource != "" {
+	case req.DataSource != "":
 		if req.DataSource == "-" {
 			// Read from stdin
 			dataContent, err = io.ReadAll(os.Stdin)
@@ -315,7 +316,7 @@ func (h *Handler) Create(req CreateRequest) (*UploadResponse, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read data: %w", err)
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("no data source specified")
 	}
 
@@ -561,15 +562,16 @@ func formatTimestamp(ts string) string {
 	// Return relative time (e.g., "2h ago", "1d ago")
 	duration := time.Since(t)
 
-	if duration < time.Minute {
+	switch {
+	case duration < time.Minute:
 		return "just now"
-	} else if duration < time.Hour {
+	case duration < time.Hour:
 		minutes := int(duration.Minutes())
 		return fmt.Sprintf("%dm ago", minutes)
-	} else if duration < 24*time.Hour {
+	case duration < 24*time.Hour:
 		hours := int(duration.Hours())
 		return fmt.Sprintf("%dh ago", hours)
-	} else if duration < 30*24*time.Hour {
+	case duration < 30*24*time.Hour:
 		days := int(duration.Hours() / 24)
 		return fmt.Sprintf("%dd ago", days)
 	}

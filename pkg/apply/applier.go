@@ -1061,7 +1061,7 @@ func (a *Applier) applyAzureConnection(data []byte) ([]ApplyResult, error) {
 
 		valueMap, ok := item["value"].(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("Azure connection missing 'value' field")
+			return nil, fmt.Errorf("azure connection missing 'value' field")
 		}
 
 		// Convert valueMap to Value struct
@@ -1128,7 +1128,7 @@ func (a *Applier) applyAzureConnection(data []byte) ([]ApplyResult, error) {
 						fedCred := value.FederatedIdentityCredential
 						if fedCred == nil || fedCred.ApplicationID == "" || fedCred.DirectoryID == "" {
 							printFederatedCompleteInstructions(a.baseURL, objectID, value.Name)
-							return nil, fmt.Errorf("Azure connection requires additional configuration: %w", err)
+							return nil, fmt.Errorf("azure connection requires additional configuration: %w", err)
 						}
 					}
 				}
@@ -1137,7 +1137,7 @@ func (a *Applier) applyAzureConnection(data []byte) ([]ApplyResult, error) {
 				if strings.Contains(errMsg, "AADSTS70025") || strings.Contains(errMsg, "AADSTS700213") {
 					if value.FederatedIdentityCredential != nil && value.FederatedIdentityCredential.ApplicationID != "" {
 						printFederatedErrorSnippet(a.baseURL, objectID, value.FederatedIdentityCredential.ApplicationID)
-						return nil, fmt.Errorf("Azure connection requires federation setup on Azure side: %w", err)
+						return nil, fmt.Errorf("azure connection requires federation setup on Azure side: %w", err)
 					}
 				}
 				return nil, fmt.Errorf("failed to update Azure connection %s: %w", objectID, err)

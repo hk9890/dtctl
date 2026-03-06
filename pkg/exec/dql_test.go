@@ -522,10 +522,8 @@ func TestGetHintForNotification(t *testing.T) {
 				if tt.wantContains != "" && !strings.Contains(hint, tt.wantContains) {
 					t.Errorf("hint %q should contain %q", hint, tt.wantContains)
 				}
-			} else {
-				if hint != "" {
-					t.Errorf("expected no hint, got %q", hint)
-				}
+			} else if hint != "" {
+				t.Errorf("expected no hint, got %q", hint)
 			}
 		})
 	}
@@ -805,10 +803,8 @@ func TestVerifyQuery_Invalid(t *testing.T) {
 	}
 	if n.SyntaxPosition == nil {
 		t.Error("expected syntax position for syntax error")
-	} else {
-		if n.SyntaxPosition.Start == nil || n.SyntaxPosition.Start.Line != 1 {
-			t.Error("expected syntax position with line 1")
-		}
+	} else if n.SyntaxPosition.Start == nil || n.SyntaxPosition.Start.Line != 1 {
+		t.Error("expected syntax position with line 1")
 	}
 }
 

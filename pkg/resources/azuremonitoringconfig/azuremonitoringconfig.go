@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	ExtensionName = "com.dynatrace.extension.da-azure"
-	BaseAPI       = "/platform/extensions/v2/extensions/" + ExtensionName + "/monitoring-configurations"
-	ExtensionAPI  = "/platform/extensions/v2/extensions/" + ExtensionName
+	ExtensionName      = "com.dynatrace.extension.da-azure"
+	BaseAPI            = "/platform/extensions/v2/extensions/" + ExtensionName + "/monitoring-configurations"
+	ExtensionAPI       = "/platform/extensions/v2/extensions/" + ExtensionName
 	ExtensionSchemaAPI = ExtensionAPI + "/%s/schema"
 )
 
@@ -259,7 +259,7 @@ func (h *Handler) Get(id string) (*AzureMonitoringConfig, error) {
 func (h *Handler) List() ([]AzureMonitoringConfig, error) {
 	var result ListResponse
 	req := h.client.HTTP().R().SetResult(&result)
-	
+
 	resp, err := req.Get(BaseAPI)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func (h *Handler) FindByName(name string) (*AzureMonitoringConfig, error) {
 			return &items[i], nil
 		}
 	}
-	return nil, fmt.Errorf("Azure monitoring config with description %q not found", name)
+	return nil, fmt.Errorf("azure monitoring config with description %q not found", name)
 }
 
 // Create creates a new Azure monitoring config

@@ -152,7 +152,7 @@ func (h *Handler) FindByName(name string) (*AzureConnection, error) {
 			return &items[i], nil
 		}
 	}
-	return nil, fmt.Errorf("Azure connection with name %q not found", name)
+	return nil, fmt.Errorf("azure connection with name %q not found", name)
 }
 
 // FindByNameAndType finds an Azure connection by name and type
@@ -194,7 +194,7 @@ func (h *Handler) Create(req AzureConnectionCreate) (*AzureConnection, error) {
 	if req.SchemaID == "" {
 		req.SchemaID = SchemaID
 	}
-	
+
 	// Default scope to environment if not provided
 	if req.Scope == "" {
 		req.Scope = "environment"

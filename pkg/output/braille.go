@@ -18,7 +18,7 @@ func NewBrailleChartPrinter(writer io.Writer) *BrailleChartPrinter {
 	// Auto-detect terminal dimensions
 	width, height := GetTerminalSize()
 	// Leave margin for y-axis labels and borders
-	width = width - 15
+	width -= 15
 	height = (height - 10) / 4 // Braille is 4 dots per row
 	if width < 40 {
 		width = 40

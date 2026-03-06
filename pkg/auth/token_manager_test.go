@@ -66,19 +66,19 @@ func TestNewTokenManager(t *testing.T) {
 	}{
 		{
 			name:    "Production config",
-			config: OAuthConfigForEnvironment(EnvironmentProd, config.DefaultSafetyLevel),
+			config:  OAuthConfigForEnvironment(EnvironmentProd, config.DefaultSafetyLevel),
 			wantEnv: EnvironmentProd,
 			wantErr: false,
 		},
 		{
 			name:    "Development config",
-			config: OAuthConfigForEnvironment(EnvironmentDev, config.DefaultSafetyLevel),
+			config:  OAuthConfigForEnvironment(EnvironmentDev, config.DefaultSafetyLevel),
 			wantEnv: EnvironmentDev,
 			wantErr: false,
 		},
 		{
 			name:    "Hardening config",
-			config: OAuthConfigForEnvironment(EnvironmentHard, config.DefaultSafetyLevel),
+			config:  OAuthConfigForEnvironment(EnvironmentHard, config.DefaultSafetyLevel),
 			wantEnv: EnvironmentHard,
 			wantErr: false,
 		},
@@ -93,12 +93,12 @@ func TestNewTokenManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tm, err := NewTokenManager(tt.config)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTokenManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err == nil && tm.environment != tt.wantEnv {
 				t.Errorf("TokenManager.environment = %v, want %v", tm.environment, tt.wantEnv)
 			}
@@ -109,40 +109,40 @@ func TestNewTokenManager(t *testing.T) {
 func TestTokenManager_EnvironmentIsolation(t *testing.T) {
 	// Test that tokens from different environments have different keyring names
 	tokenName := "same-token-name"
-	
+
 	prodConfig := OAuthConfigForEnvironment(EnvironmentProd, config.DefaultSafetyLevel)
 	prodTM, err := NewTokenManager(prodConfig)
 	if err != nil {
 		t.Fatalf("Failed to create prod TokenManager: %v", err)
 	}
-	
-		devConfig := OAuthConfigForEnvironment(EnvironmentDev, config.DefaultSafetyLevel)
+
+	devConfig := OAuthConfigForEnvironment(EnvironmentDev, config.DefaultSafetyLevel)
 	devTM, err := NewTokenManager(devConfig)
 	if err != nil {
 		t.Fatalf("Failed to create dev TokenManager: %v", err)
 	}
-	
+
 	hardConfig := OAuthConfigForEnvironment(EnvironmentHard, config.DefaultSafetyLevel)
 	hardTM, err := NewTokenManager(hardConfig)
 	if err != nil {
 		t.Fatalf("Failed to create hard TokenManager: %v", err)
 	}
-	
+
 	prodKey := prodTM.getKeyringName(tokenName)
 	devKey := devTM.getKeyringName(tokenName)
 	hardKey := hardTM.getKeyringName(tokenName)
-	
+
 	// All three should be different
 	if prodKey == devKey || prodKey == hardKey || devKey == hardKey {
 		t.Errorf("Token keys should be different across environments: prod=%s, dev=%s, hard=%s",
 			prodKey, devKey, hardKey)
 	}
-	
+
 	// Verify the expected formats
 	expectedProd := "oauth:prod:same-token-name"
 	expectedDev := "oauth:dev:same-token-name"
 	expectedHard := "oauth:hard:same-token-name"
-	
+
 	if prodKey != expectedProd {
 		t.Errorf("Production key = %v, want %v", prodKey, expectedProd)
 	}

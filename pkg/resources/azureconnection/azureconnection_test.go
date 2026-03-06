@@ -146,7 +146,7 @@ func TestHandlerCreateSuccessAndStatuses(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		postSeen := false
 		h, server := newHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			switch r.Method {
 			case http.MethodPost:
 				postSeen = true
@@ -238,7 +238,7 @@ func TestHandlerUpdateSuccessAndStatuses(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		getCalls := 0
 		h, server := newHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			switch r.Method {
 			case http.MethodGet:
 				getCalls++

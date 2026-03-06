@@ -38,7 +38,7 @@ func TestCompareVersion(t *testing.T) {
 func TestGetLatestVersion(t *testing.T) {
 	t.Run("success chooses highest version", func(t *testing.T) {
 		h, server := newMonitoringHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(ExtensionResponse{Items: []ExtensionItem{{Version: "1.4.0"}, {Version: "1.12.0"}, {Version: "1.9.8"}}})
 		})
 		defer server.Close()
@@ -54,7 +54,7 @@ func TestGetLatestVersion(t *testing.T) {
 
 	t.Run("empty versions", func(t *testing.T) {
 		h, server := newMonitoringHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(ExtensionResponse{Items: []ExtensionItem{{Version: ""}}})
 		})
 		defer server.Close()
@@ -77,7 +77,7 @@ func TestListAvailableLocationsAndFeatureSets(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(ExtensionSchemaResponse{Enums: map[string]SchemaEnum{
 			"dynatrace.datasource.azure:location": {Items: []SchemaEnumItem{{Value: "westeurope"}, {Value: ""}, {Value: "eastus"}}},
-			"FeatureSetsType":                  {Items: []SchemaEnumItem{{Value: "logs_essential"}, {Value: "metrics_all"}, {Value: "alerts_essential"}}},
+			"FeatureSetsType":                     {Items: []SchemaEnumItem{{Value: "logs_essential"}, {Value: "metrics_all"}, {Value: "alerts_essential"}}},
 		}})
 	})
 	defer server.Close()
@@ -107,7 +107,7 @@ func TestMonitoringCrudAndFindByName(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		getCalls := 0
 		h, server := newMonitoringHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			switch r.Method {
 			case http.MethodGet:
 				getCalls++
@@ -175,7 +175,7 @@ func TestMonitoringCrudAndFindByName(t *testing.T) {
 
 	t.Run("error paths", func(t *testing.T) {
 		h, server := newMonitoringHandler(t, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			switch r.Method {
 			case http.MethodGet:
 				w.WriteHeader(http.StatusInternalServerError)

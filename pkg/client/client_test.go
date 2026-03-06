@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dynatrace-oss/dtctl/pkg/version"
 	"github.com/sirupsen/logrus"
+
+	"github.com/dynatrace-oss/dtctl/pkg/version"
 )
 
 func TestNew(t *testing.T) {

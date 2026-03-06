@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpconnection"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpmonitoringconfig"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -88,7 +89,7 @@ Examples:
 		updated, err := handler.Update(existing.ObjectID, value)
 		if err != nil {
 			if strings.Contains(err.Error(), "GCP authentication failed") {
-				return fmt.Errorf("%w\nIAM Policy update can take a couple of minutes before it becomes active, please retry in a moment.", err)
+				return fmt.Errorf("%w\nIAM Policy update can take a couple of minutes before it becomes active, please retry in a moment", err)
 			}
 			return err
 		}

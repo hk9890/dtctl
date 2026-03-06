@@ -5,15 +5,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+
 	"github.com/dynatrace-oss/dtctl/pkg/aidetect"
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
 	"github.com/dynatrace-oss/dtctl/pkg/suggest"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -150,9 +151,7 @@ func enhanceCommandError(cmd *cobra.Command, err error) error {
 // setupErrorHandlers configures enhanced error handling for a command and its children
 func setupErrorHandlers(cmd *cobra.Command) {
 	// Set flag error function for this command
-	cmd.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
-		return enhanceFlagError(c, err)
-	})
+	cmd.SetFlagErrorFunc(enhanceFlagError)
 
 	// Recursively setup for all subcommands
 	for _, sub := range cmd.Commands() {

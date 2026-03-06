@@ -3,12 +3,13 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
 	"github.com/dynatrace-oss/dtctl/pkg/prompt"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/lookup"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
-	"github.com/spf13/cobra"
 )
 
 // getLookupsCmd retrieves lookup tables

@@ -1,4 +1,4 @@
-.PHONY: all build clean test test-unit test-integration test-all test-coverage test-update-golden install lint fmt markdownlint markdownlint-fix security-scan check release release-snapshot
+.PHONY: all build clean test test-unit test-integration test-all test-coverage test-update-golden install lint lint-strict fmt markdownlint markdownlint-fix security-scan check release release-snapshot
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -116,18 +116,35 @@ clean:
 lint:
 	@golangci-lint run
 
+# Run strict linter (matches CI behavior — zero tolerance)
+lint-strict:
+	@echo "Checking goimports formatting..."
+	@goimports_output=$$(goimports -local github.com/dynatrace-oss/dtctl -l .); \
+	if [ -n "$$goimports_output" ]; then \
+		echo "The following files are not properly formatted:"; \
+		echo "$$goimports_output"; \
+		echo ""; \
+		echo "Run 'make fmt' to fix formatting."; \
+		exit 1; \
+	fi
+	@echo "Checking go mod tidy..."
+	@go mod tidy && git diff --exit-code go.mod go.sum > /dev/null 2>&1 || \
+		(echo "go.mod or go.sum is not tidy. Run 'go mod tidy' and commit the changes." && exit 1)
+	@echo "Running golangci-lint (zero tolerance)..."
+	@golangci-lint run
+
 # Run security vulnerability scan
 security-scan:
 	@echo "Running govulncheck..."
 	@govulncheck ./...
 
-# Run all checks (lint + security)
-check: lint security-scan
+# Run all checks (lint-strict + security)
+check: lint-strict security-scan
 
 # Format code
 fmt:
 	@go fmt ./...
-	@goimports -w .
+	@goimports -local github.com/dynatrace-oss/dtctl -w .
 
 # Markdown linting
 markdownlint:

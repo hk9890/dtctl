@@ -16,32 +16,33 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/pkg/browser"
+
+	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 
 const (
 	// Production environment
-	prodAuthURL      = "https://sso.dynatrace.com/oauth2/authorize"
-	prodTokenURL     = "https://token.dynatrace.com/sso/oauth2/token"
-	prodUserInfoURL  = "https://sso.dynatrace.com/sso/oauth2/userinfo"
-	prodClientID     = "dt0s12.dtctl-prod"
-	
+	prodAuthURL     = "https://sso.dynatrace.com/oauth2/authorize"
+	prodTokenURL    = "https://token.dynatrace.com/sso/oauth2/token"
+	prodUserInfoURL = "https://sso.dynatrace.com/sso/oauth2/userinfo"
+	prodClientID    = "dt0s12.dtctl-prod"
+
 	// Development environment
-	devAuthURL       = "https://sso-dev.dynatracelabs.com/oauth2/authorize"
-	devTokenURL      = "https://dev.token.dynatracelabs.com/sso/oauth2/token"
-	devUserInfoURL   = "https://sso-dev.dynatracelabs.com/sso/oauth2/userinfo"
-	devClientID      = "dt0s12.dtctl-dev"
-	
+	devAuthURL     = "https://sso-dev.dynatracelabs.com/oauth2/authorize"
+	devTokenURL    = "https://dev.token.dynatracelabs.com/sso/oauth2/token"
+	devUserInfoURL = "https://sso-dev.dynatracelabs.com/sso/oauth2/userinfo"
+	devClientID    = "dt0s12.dtctl-dev"
+
 	// Hardening/Sprint environment
-	hardAuthURL      = "https://sso-sprint.dynatracelabs.com/oauth2/authorize"
-	hardTokenURL     = "https://hard.token.dynatracelabs.com/sso/oauth2/token"
-	hardUserInfoURL  = "https://sso-sprint.dynatracelabs.com/sso/oauth2/userinfo"
-	hardClientID     = "dt0s12.dtctl-sprint"
-	
-	callbackPort     = 3232
+	hardAuthURL     = "https://sso-sprint.dynatracelabs.com/oauth2/authorize"
+	hardTokenURL    = "https://hard.token.dynatracelabs.com/sso/oauth2/token"
+	hardUserInfoURL = "https://sso-sprint.dynatracelabs.com/sso/oauth2/userinfo"
+	hardClientID    = "dt0s12.dtctl-sprint"
+
+	callbackPort = 3232
 	// Must match the registered redirect URI for the OAuth client
-	callbackPath     = "/auth/login"
+	callbackPath = "/auth/login"
 )
 
 // Environment represents a Dynatrace environment type
@@ -99,7 +100,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:apps:run",
 			"app-engine:edge-connects:read",
 		}
-	
+
 	case config.SafetyLevelReadWriteMine:
 		return []string{
 			"openid",
@@ -147,7 +148,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:read",
 			"email:emails:send",
 		}
-	
+
 	case config.SafetyLevelReadWriteAll:
 		return []string{
 			"openid",
@@ -213,7 +214,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:write",
 			"email:emails:send",
 		}
-	
+
 	case config.SafetyLevelDangerouslyUnrestricted:
 		return []string{
 			"openid",
@@ -288,7 +289,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:delete",
 			"email:emails:send",
 		}
-	
+
 	default:
 		// Default to readwrite-all
 		return GetScopesForSafetyLevel(config.SafetyLevelReadWriteAll)
@@ -309,15 +310,17 @@ type OAuthConfig struct {
 
 // DetectEnvironment determines the environment type from a Dynatrace URL
 func DetectEnvironment(environmentURL string) Environment {
-	if strings.Contains(environmentURL, "apps.dynatrace.com") {
+	switch {
+	case strings.Contains(environmentURL, "apps.dynatrace.com"):
 		return EnvironmentProd
-	} else if strings.Contains(environmentURL, "dev.apps.dynatracelabs.com") {
+	case strings.Contains(environmentURL, "dev.apps.dynatracelabs.com"):
 		return EnvironmentDev
-	} else if strings.Contains(environmentURL, "sprint.apps.dynatracelabs.com") {
+	case strings.Contains(environmentURL, "sprint.apps.dynatracelabs.com"):
 		return EnvironmentHard
+	default:
+		// Default to prod if unable to detect
+		return EnvironmentProd
 	}
-	// Default to prod if unable to detect
-	return EnvironmentProd
 }
 
 // DefaultOAuthConfig returns the default OAuth configuration for production with readwrite-all safety level
@@ -328,12 +331,12 @@ func DefaultOAuthConfig() *OAuthConfig {
 // OAuthConfigForEnvironment creates an OAuth configuration for the specified environment and safety level
 func OAuthConfigForEnvironment(env Environment, safetyLevel config.SafetyLevel) *OAuthConfig {
 	var authURL, tokenURL, userInfoURL, clientID string
-	
+
 	// Normalize empty safety level to default
 	if safetyLevel == "" {
 		safetyLevel = config.DefaultSafetyLevel
 	}
-	
+
 	switch env {
 	case EnvironmentDev:
 		authURL = devAuthURL
@@ -351,7 +354,7 @@ func OAuthConfigForEnvironment(env Environment, safetyLevel config.SafetyLevel) 
 		userInfoURL = prodUserInfoURL
 		clientID = prodClientID
 	}
-	
+
 	return &OAuthConfig{
 		AuthURL:     authURL,
 		TokenURL:    tokenURL,
@@ -399,13 +402,13 @@ type UserInfo struct {
 }
 
 type OAuthFlow struct {
-	config         *OAuthConfig
-	codeVerifier   string
-	codeChallenge  string
-	state          string
-	server         *http.Server
-	resultChan     chan *authResult
-	resultOnce     sync.Once
+	config        *OAuthConfig
+	codeVerifier  string
+	codeChallenge string
+	state         string
+	server        *http.Server
+	resultChan    chan *authResult
+	resultOnce    sync.Once
 }
 
 type authResult struct {
@@ -417,17 +420,17 @@ func NewOAuthFlow(config *OAuthConfig) (*OAuthFlow, error) {
 	if config == nil {
 		config = DefaultOAuthConfig()
 	}
-	
+
 	verifier, challenge, err := generatePKCE()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PKCE: %w", err)
 	}
-	
+
 	state, err := generateRandomString(32)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate state: %w", err)
 	}
-	
+
 	return &OAuthFlow{
 		config:        config,
 		codeVerifier:  verifier,
@@ -444,16 +447,16 @@ func (f *OAuthFlow) Start(ctx context.Context) (*TokenSet, error) {
 	defer f.stopCallbackServer()
 
 	authURL := f.buildAuthURL()
-	
+
 	fmt.Println("Opening browser for authentication...")
 	fmt.Println("If the browser doesn't open automatically, please visit:")
 	fmt.Println(authURL)
-	
+
 	if err := browser.OpenURL(authURL); err != nil {
 		fmt.Printf("Failed to open browser automatically: %v\n", err)
 		fmt.Println("Please open the URL above manually.")
 	}
-	
+
 	select {
 	case result := <-f.resultChan:
 		if result.err != nil {
@@ -471,33 +474,33 @@ func (f *OAuthFlow) RefreshToken(refreshToken string) (*TokenSet, error) {
 		"refresh_token": {refreshToken},
 		"client_id":     {f.config.ClientID},
 	}
-	
+
 	req, err := http.NewRequest("POST", f.config.TokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token refresh request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("token refresh failed: %s - %s", resp.Status, string(body))
 	}
-	
+
 	var tokens TokenSet
 	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
-	
+
 	tokens.ExpiresAt = time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second)
-	
+
 	return &tokens, nil
 }
 
@@ -506,26 +509,26 @@ func (f *OAuthFlow) GetUserInfo(accessToken string) (*UserInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	
+
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("user info request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("failed to get user info: %s - %s", resp.Status, string(body))
 	}
-	
+
 	var userInfo UserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		return nil, fmt.Errorf("failed to decode user info: %w", err)
 	}
-	
+
 	return &userInfo, nil
 }
 
@@ -539,12 +542,12 @@ func (f *OAuthFlow) buildAuthURL() string {
 		"code_challenge":        {f.codeChallenge},
 		"code_challenge_method": {"S256"},
 	}
-	
+
 	// Add resource parameter with environment URL if available
-	if f.config.EnvironmentURL != "" {		
+	if f.config.EnvironmentURL != "" {
 		params.Set("resource", f.config.EnvironmentURL)
 	}
-	
+
 	return f.config.AuthURL + "?" + params.Encode()
 }
 
@@ -555,36 +558,36 @@ func (f *OAuthFlow) getRedirectURI() string {
 func (f *OAuthFlow) startCallbackServer() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(callbackPath, f.handleCallback)
-	
+
 	// Create a listener first so we can verify it's bound before proceeding
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", f.config.Port))
 	if err != nil {
 		return fmt.Errorf("failed to bind to port %d: %w", f.config.Port, err)
 	}
-	
+
 	f.server = &http.Server{
 		Handler: mux,
 	}
-	
+
 	// Channel to signal when server is ready or encounters an error
 	serverReady := make(chan error, 1)
-	
+
 	go func() {
 		// Signal that we're ready to accept connections
 		serverReady <- nil
-		
+
 		// Start serving
 		if err := f.server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			f.publishResult(&authResult{err: fmt.Errorf("callback server error: %w", err)})
 		}
 	}()
-	
+
 	// Wait for server to be ready (or error)
 	if err := <-serverReady; err != nil {
 		listener.Close()
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -602,25 +605,25 @@ func (f *OAuthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
 		f.sendError(w, fmt.Errorf("authentication failed: %s - %s", errMsg, errDesc))
 		return
 	}
-	
+
 	state := r.URL.Query().Get("state")
 	if state != f.state {
 		f.sendError(w, fmt.Errorf("invalid state parameter"))
 		return
 	}
-	
+
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		f.sendError(w, fmt.Errorf("no authorization code received"))
 		return
 	}
-	
+
 	tokens, err := f.exchangeCode(code)
 	if err != nil {
 		f.sendError(w, err)
 		return
 	}
-	
+
 	f.sendSuccess(w)
 	f.publishResult(&authResult{tokens: tokens})
 }
@@ -633,33 +636,33 @@ func (f *OAuthFlow) exchangeCode(code string) (*TokenSet, error) {
 		"redirect_uri":  {f.getRedirectURI()},
 		"code_verifier": {f.codeVerifier},
 	}
-	
+
 	req, err := http.NewRequest("POST", f.config.TokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("token exchange failed: %s - %s", resp.Status, string(body))
 	}
-	
+
 	var tokens TokenSet
 	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
-	
+
 	tokens.ExpiresAt = time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second)
-	
+
 	return &tokens, nil
 }
 
@@ -691,13 +694,13 @@ func generatePKCE() (verifier, challenge string, err error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", "", err
 	}
-	
+
 	verifier = base64.RawURLEncoding.EncodeToString(b)
-	
+
 	h := sha256.New()
 	h.Write([]byte(verifier))
 	challenge = base64.RawURLEncoding.EncodeToString(h.Sum(nil))
-	
+
 	return verifier, challenge, nil
 }
 

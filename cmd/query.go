@@ -7,11 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
 	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/util/template"
-	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 // isTerminal checks if the given file is a terminal

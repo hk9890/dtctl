@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 
 // TestGlobalFlags_Config tests the --config flag

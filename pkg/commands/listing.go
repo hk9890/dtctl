@@ -8,10 +8,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dynatrace-oss/dtctl/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dynatrace-oss/dtctl/pkg/version"
 )
 
 // SchemaVersion is incremented on breaking changes to the listing structure.

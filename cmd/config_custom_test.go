@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/adrg/xdg"
-	"github.com/dynatrace-oss/dtctl/pkg/config"
 	"github.com/spf13/viper"
+
+	"github.com/dynatrace-oss/dtctl/pkg/config"
 )
 
 func TestConfigFlagRespected(t *testing.T) {

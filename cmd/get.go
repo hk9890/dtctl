@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/watch"
-	"github.com/spf13/cobra"
 )
 
 // getCmd represents the get command

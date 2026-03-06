@@ -33,13 +33,14 @@ func GetTokenWithOAuthSupport(cfg *config.Config, tokenRef string) (string, erro
 			}
 		}
 	}
-	
+
 	// Fall back to regular token lookup
 	return cfg.GetToken(tokenRef)
 }
 
-// NewFromConfigWithOAuth creates a new client from config with OAuth support
-// Deprecated: Use NewFromConfig instead, which now supports OAuth tokens automatically
+// NewFromConfigWithOAuth creates a new client from config with OAuth support.
+//
+// Deprecated: Use NewFromConfig instead, which now supports OAuth tokens automatically.
 func NewFromConfigWithOAuth(cfg *config.Config) (*Client, error) {
 	return NewFromConfig(cfg)
 }

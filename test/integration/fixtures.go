@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 )
 
 // WorkflowFixture returns a minimal workflow JSON for integration testing

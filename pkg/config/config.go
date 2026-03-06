@@ -261,7 +261,7 @@ func (c *Config) GetToken(tokenRef string) (string, error) {
 				return tokenData.AccessToken, nil
 			}
 		}
-		
+
 		// Fall back to regular token
 		token, err := ts.GetToken(tokenRef)
 		if err == nil && token != "" {

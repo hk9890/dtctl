@@ -4,7 +4,23 @@ run:
   timeout: 5m
   go: '1.24'
 
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/dynatrace-oss/dtctl
+
 linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - gocritic
+    - ineffassign
+    - unused
+
   settings:
     staticcheck:
       checks:
@@ -12,7 +28,7 @@ linters:
         - "-QF*"    # Disable quickfix suggestions (stylistic, not bugs)
         - "-ST1003" # Don't enforce ID naming convention (breaks JSON field mapping)
         - "-S1016"  # Don't require struct conversion shorthand
-        - "-ST1005" # Don't enforce error string conventions (too noisy for existing code)
+        # ST1005 (error string conventions) re-enabled — Go convention
 
     errcheck:
       exclude-functions:

@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/dynatrace-oss/dtctl/pkg/prompt"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/resolver"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/workflow"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
-	"github.com/spf13/cobra"
 )
 
 // restoreCmd represents the restore command

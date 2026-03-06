@@ -230,4 +230,3 @@ func (h *TrashHandler) Delete(id string) error {
 
 	return nil
 }
-

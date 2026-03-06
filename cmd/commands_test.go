@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dynatrace-oss/dtctl/pkg/commands"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/dynatrace-oss/dtctl/pkg/commands"
 )
 
 func TestCommandsCmd_OutputsValidJSON(t *testing.T) {
