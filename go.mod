@@ -1,6 +1,6 @@
 module github.com/dynatrace-oss/dtctl
 
-go 1.24.13
+go 1.26.1
 
 require (
 	github.com/adrg/xdg v0.5.3
