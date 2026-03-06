@@ -132,8 +132,7 @@ func TestCommandsCmd_BriefReducesSize(t *testing.T) {
 	fullData, err := json.Marshal(listing)
 	require.NoError(t, err)
 
-	briefListing := commands.Build(rootCmd)
-	commands.ApplyBrief(briefListing)
+	briefListing := commands.NewBrief(listing)
 	briefData, err := json.Marshal(briefListing)
 	require.NoError(t, err)
 
@@ -146,18 +145,18 @@ func TestCommandsCmd_FilterByAlias(t *testing.T) {
 	listingByName := commands.Build(rootCmd)
 	listingByAlias := commands.Build(rootCmd)
 
-	matchedName := commands.FilterByResource(listingByName, "workflows")
-	matchedAlias := commands.FilterByResource(listingByAlias, "wf")
+	filteredByName, matchedName := commands.FilterByResource(listingByName, "workflows")
+	filteredByAlias, matchedAlias := commands.FilterByResource(listingByAlias, "wf")
 
 	require.True(t, matchedName)
 	require.True(t, matchedAlias)
 
 	// Same verbs should match
 	var nameVerbs, aliasVerbs []string
-	for v := range listingByName.Verbs {
+	for v := range filteredByName.Verbs {
 		nameVerbs = append(nameVerbs, v)
 	}
-	for v := range listingByAlias.Verbs {
+	for v := range filteredByAlias.Verbs {
 		aliasVerbs = append(aliasVerbs, v)
 	}
 	require.ElementsMatch(t, nameVerbs, aliasVerbs)
@@ -165,16 +164,16 @@ func TestCommandsCmd_FilterByAlias(t *testing.T) {
 
 func TestCommandsCmd_FilterByVerb(t *testing.T) {
 	listing := commands.Build(rootCmd)
-	matched := commands.FilterByResource(listing, "get")
+	filtered, matched := commands.FilterByResource(listing, "get")
 
 	require.True(t, matched)
-	require.Len(t, listing.Verbs, 1)
-	require.Contains(t, listing.Verbs, "get")
+	require.Len(t, filtered.Verbs, 1)
+	require.Contains(t, filtered.Verbs, "get")
 }
 
 func TestCommandsCmd_FilterNoMatch(t *testing.T) {
 	listing := commands.Build(rootCmd)
-	matched := commands.FilterByResource(listing, "nonexistent-resource")
+	_, matched := commands.FilterByResource(listing, "nonexistent-resource")
 
 	require.False(t, matched)
 }
@@ -490,8 +489,8 @@ func TestCommandsCmd_RunCommandsListing_Integration(t *testing.T) {
 		"brief output should be smaller than full output")
 
 	// Filtered output
-	filtered := commands.Build(rootCmd)
-	matched := commands.FilterByResource(filtered, "workflows")
+	unfiltered := commands.Build(rootCmd)
+	filtered, matched := commands.FilterByResource(unfiltered, "workflows")
 	require.True(t, matched)
 	var filteredBuf bytes.Buffer
 	err = commands.WriteTo(&filteredBuf, filtered, "json")

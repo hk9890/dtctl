@@ -64,9 +64,11 @@ func runCommandsListing(cmd *cobra.Command, args []string) error {
 
 	// Apply resource/verb filter if a positional arg is provided
 	if len(args) > 0 {
-		if !commands.FilterByResource(listing, args[0]) {
+		filtered, ok := commands.FilterByResource(listing, args[0])
+		if !ok {
 			return fmt.Errorf("no commands found for %q", args[0])
 		}
+		listing = filtered
 	}
 
 	// Apply brief mode (returns a new copy, original is unchanged)

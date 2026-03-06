@@ -211,32 +211,32 @@ func TestBuild_PatternsAndAntipatterns(t *testing.T) {
 	require.NotEmpty(t, listing.Antipatterns)
 }
 
-func TestApplyBrief(t *testing.T) {
+func TestNewBrief_FullBehavior(t *testing.T) {
 	root := newTestRoot()
 	listing := Build(root)
 
-	ApplyBrief(listing)
+	brief := NewBrief(listing)
 
 	// Stripped fields
-	require.Empty(t, listing.Description)
-	require.Nil(t, listing.GlobalFlags)
-	require.Nil(t, listing.TimeFormats)
-	require.Nil(t, listing.Patterns)
-	require.Nil(t, listing.Antipatterns)
+	require.Empty(t, brief.Description)
+	require.Nil(t, brief.GlobalFlags)
+	require.Nil(t, brief.TimeFormats)
+	require.Nil(t, brief.Patterns)
+	require.Nil(t, brief.Antipatterns)
 
 	// Preserved fields
-	require.Equal(t, SchemaVersion, listing.SchemaVersion)
-	require.Equal(t, "dtctl", listing.Tool)
-	require.NotEmpty(t, listing.Verbs)
-	require.NotNil(t, listing.Aliases)
+	require.Equal(t, SchemaVersion, brief.SchemaVersion)
+	require.Equal(t, "dtctl", brief.Tool)
+	require.NotEmpty(t, brief.Verbs)
+	require.NotNil(t, brief.Aliases)
 
 	// Verb descriptions stripped but mutating preserved
-	applyVerb := listing.Verbs["apply"]
+	applyVerb := brief.Verbs["apply"]
 	require.Empty(t, applyVerb.Description)
 	require.True(t, applyVerb.Mutating, "mutating should be preserved in brief mode")
 	require.Empty(t, applyVerb.SafetyOp, "safety_operation should be stripped in brief mode")
 
-	getVerb := listing.Verbs["get"]
+	getVerb := brief.Verbs["get"]
 	require.False(t, getVerb.Mutating, "read-only verb should remain false")
 }
 
@@ -286,12 +286,12 @@ func TestFilterByResource(t *testing.T) {
 			root := newTestRoot()
 			listing := Build(root)
 
-			matched := FilterByResource(listing, tt.filter)
+			filtered, matched := FilterByResource(listing, tt.filter)
 			require.Equal(t, tt.expectMatch, matched)
 
 			if tt.expectMatch {
 				var verbNames []string
-				for name := range listing.Verbs {
+				for name := range filtered.Verbs {
 					verbNames = append(verbNames, name)
 				}
 				require.ElementsMatch(t, tt.expectVerbs, verbNames)

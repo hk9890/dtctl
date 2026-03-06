@@ -394,47 +394,50 @@ func NewBrief(l *Listing) *Listing {
 	return brief
 }
 
-// ApplyBrief strips verbose fields from a listing in place for reduced token count.
-// It preserves mutating status since agents always need it.
-//
-// Deprecated: Use NewBrief instead, which returns a copy and doesn't mutate the input.
-func ApplyBrief(l *Listing) {
-	result := NewBrief(l)
-	*l = *result
-}
-
-// FilterByResource filters the listing to only include verbs that operate on
+// FilterByResource returns a new listing containing only verbs that operate on
 // the given resource name. The name is matched against resources, subcommands,
-// and aliases. Returns true if any verbs matched.
-func FilterByResource(l *Listing, name string) bool {
+// and aliases. Returns the filtered listing and true if any verbs matched.
+// The original listing is not modified.
+func FilterByResource(l *Listing, name string) (*Listing, bool) {
 	// Resolve alias
 	resolved := name
 	if target, ok := ResourceAliases[name]; ok {
 		resolved = target
 	}
 
-	// Check if it's a verb name first
-	if _, ok := l.Verbs[name]; ok {
-		// Filter to just this verb
-		verb := l.Verbs[name]
-		l.Verbs = map[string]*Verb{name: verb}
-		return true
-	}
+	var filteredVerbs map[string]*Verb
 
-	// Filter to verbs that contain the resource
-	filtered := make(map[string]*Verb)
-	for verbName, verb := range l.Verbs {
-		if containsResource(verb, resolved) || containsResource(verb, name) {
-			filtered[verbName] = verb
+	// Check if it's a verb name first
+	if verb, ok := l.Verbs[name]; ok {
+		filteredVerbs = map[string]*Verb{name: verb}
+	} else {
+		// Filter to verbs that contain the resource
+		filteredVerbs = make(map[string]*Verb)
+		for verbName, verb := range l.Verbs {
+			if containsResource(verb, resolved) || containsResource(verb, name) {
+				filteredVerbs[verbName] = verb
+			}
 		}
 	}
 
-	if len(filtered) == 0 {
-		return false
+	if len(filteredVerbs) == 0 {
+		return nil, false
 	}
 
-	l.Verbs = filtered
-	return true
+	result := &Listing{
+		SchemaVersion: l.SchemaVersion,
+		Tool:          l.Tool,
+		Version:       l.Version,
+		Description:   l.Description,
+		CommandModel:  l.CommandModel,
+		GlobalFlags:   l.GlobalFlags,
+		Verbs:         filteredVerbs,
+		Aliases:       l.Aliases,
+		TimeFormats:   l.TimeFormats,
+		Patterns:      l.Patterns,
+		Antipatterns:  l.Antipatterns,
+	}
+	return result, true
 }
 
 // containsResource checks if a verb or its subcommands reference a resource name.
