@@ -95,6 +95,11 @@ dtctl config get-contexts
 dtctl config use-context dev
 dtctl config use-context prod
 
+# Or use the ctx shortcut:
+dtctl ctx                    # List contexts
+dtctl ctx dev                # Switch to dev
+dtctl ctx prod               # Switch to prod
+
 # Check current context
 dtctl config current-context
 
@@ -3382,6 +3387,16 @@ dtctl query "fetch logs" --max-result-records 5000 -o csv > logs.csv
 ---
 
 ## Troubleshooting
+
+### Quick Diagnostics with `dtctl doctor`
+
+Before diving into manual troubleshooting, run the built-in health check:
+
+```bash
+dtctl doctor
+```
+
+This runs 6 sequential checks — version, config, context, token, connectivity, and authentication — and reports pass/fail with actionable suggestions for each.
 
 ### Understanding Error Messages
 

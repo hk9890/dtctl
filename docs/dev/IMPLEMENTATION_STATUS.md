@@ -41,6 +41,8 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] `restore` - Restore to previous version
 - [x] `share/unshare` - Share dashboards and notebooks
 - [x] `alias` - Manage command aliases (set, list, delete, import, export)
+- [x] `ctx` - Quick context management (list, switch, describe, set, delete)
+- [x] `doctor` - Health check (config, context, token, connectivity, auth)
 
 ### Resources
 

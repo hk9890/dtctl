@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`dtctl ctx` command** — Top-level context management shortcut (like kubectx)
+  - `dtctl ctx` lists all contexts, `dtctl ctx <name>` switches context
+  - Subcommands: `current`, `describe`, `set`, `delete`/`rm`
+  - Shared helper functions extracted from `config.go` to eliminate duplication
+- **`dtctl doctor` command** — Health check for configuration and connectivity
+  - 6 sequential checks: version, config, context, token, connectivity, authentication
+  - Token expiration warning (< 24h remaining)
+  - Lightweight HEAD request for connectivity probe
+
+### Changed
+- **Release signing & SBOM** — Added cosign signing and syft SBOM generation to GoReleaser and release workflow
+- **Linter hardening** — Re-enabled `errcheck` and `staticcheck` in golangci-lint v2 config with targeted exclusions (0 issues)
+- **CI coverage threshold** — Increased from 49% to 50% as a regression guard
+- Refactored `cmd/config.go` to use shared context management helpers (~150 lines of duplication removed)
+
 ## [0.12.0] - 2026-02-24
 
 ### Added

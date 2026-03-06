@@ -13,7 +13,7 @@ kubectl-inspired CLI for Dynatrace (dashboards, workflows, SLOs, etc). Go + Cobr
 ## Architecture
 
 ```text
-cmd/          # Cobra commands (get, describe, create, delete, apply, exec)
+cmd/          # Cobra commands (get, describe, create, delete, apply, exec, ctx, doctor)
 pkg/
   ├── client/    # HTTP client (auth, retry, rate limiting, pagination)
   ├── config/    # Multi-context config (~/.config/dtctl/config, keyring tokens)
@@ -61,7 +61,7 @@ func ListResources(client *client.Client, filters map[string]string) ([]interfac
 ### Required for These Commands
 
 ✅ `create`, `edit`, `apply`, `delete`, `update` (all modify resources)  
-❌ `get`, `describe`, `query`, `logs`, `history` (read-only)
+❌ `get`, `describe`, `query`, `logs`, `history`, `ctx`, `doctor` (read-only)
 
 ### Pattern (after `LoadConfig()`, before client ops)
 

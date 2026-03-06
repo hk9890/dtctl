@@ -102,6 +102,9 @@ Try a few commands to ensure everything works:
 # View available commands
 ./bin/dtctl get --help
 ./bin/dtctl query --help
+
+# Run health check (after configuration)
+./bin/dtctl doctor
 ```
 
 ### Installation Options (Source Builds)

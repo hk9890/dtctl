@@ -61,6 +61,9 @@ dtctl config set-context my-env \
 
 dtctl config set-credentials my-token --token "dt0s16.YOUR_TOKEN"
 
+# Verify everything works
+dtctl doctor
+
 # Go!
 dtctl get workflows
 dtctl describe workflow "My Workflow" -o yaml  # Structured output
@@ -83,6 +86,13 @@ dtctl create lookup -f error_codes.csv --path /lookups/production/errors --looku
 | App Functions | get, describe, execute (discover & run serverless functions) |
 | App Intents | get, describe, find, open (deep linking across apps) |
 | And more... | Apps, EdgeConnect, Davis AI |
+
+### Utility Commands
+
+| Command | Description |
+|---------|-------------|
+| `dtctl ctx` | Quick context switching (`ctx` lists, `ctx <name>` switches, subcommands: `current`, `describe`, `set`, `delete`) |
+| `dtctl doctor` | Health check — verifies config, context, token, connectivity, and authentication |
 
 ## Documentation
 

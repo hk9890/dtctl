@@ -160,6 +160,8 @@ history     - Show version history (snapshots) of a document
 restore     - Restore a document to a previous version
 wait        - Wait for a specific condition (query results, resource state)
 alias       - Manage command aliases (set, list, delete, import, export)
+ctx         - Quick context management (list, switch, describe, set, delete)
+doctor      - Health check (config, context, token, connectivity, auth)
 
 # (not implemented yet)
 # patch       - Update specific fields of a resource
@@ -1295,6 +1297,36 @@ dtctl config delete-context dev
 
 # Rename context
 dtctl config rename-context old-name new-name
+```
+
+#### Context Shortcut (`dtctl ctx`)
+
+The `ctx` command provides a top-level shortcut for common context operations:
+
+```bash
+dtctl ctx                    # List all contexts (highlights current)
+dtctl ctx prod               # Switch to 'prod' context
+dtctl ctx current            # Show current context name
+dtctl ctx describe           # Describe current context
+dtctl ctx describe prod      # Describe specific context
+dtctl ctx set                # Create or update a context (interactive)
+dtctl ctx delete old-env     # Delete a context
+dtctl ctx rm old-env         # Alias for delete
+```
+
+### Diagnostics
+
+```bash
+# Run all health checks
+dtctl doctor
+
+# Checks performed (in order):
+# 1. Version    - shows dtctl version
+# 2. Config     - verifies config file exists and is readable
+# 3. Context    - validates current context and environment URL
+# 4. Token      - checks token presence and expiration
+# 5. Connect    - lightweight HEAD request to environment URL
+# 6. Auth       - validates token via metadata API
 ```
 
 ### Authentication
