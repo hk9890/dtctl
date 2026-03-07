@@ -1,46 +1,116 @@
 // Package skills provides installation and management of AI coding assistant
-// skill files for dtctl. It embeds template files for each supported agent
-// and handles installing/uninstalling them to the correct locations.
+// skill files for dtctl. It embeds the full skill content from skills/dtctl/
+// (SKILL.md and all reference files) and concatenates them into a single
+// document at install time, with agent-specific wrappers.
 package skills
 
 import (
-	"bytes"
-	_ "embed"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
-	"text/template"
 
 	"github.com/dynatrace-oss/dtctl/pkg/aidetect"
 	"github.com/dynatrace-oss/dtctl/pkg/version"
+	dtctlskill "github.com/dynatrace-oss/dtctl/skills/dtctl"
 )
 
-//go:embed templates/claude.md
-var claudeTemplate string
+// referenceFile defines a reference document to append after SKILL.md.
+// The order here determines the order in the concatenated output.
+type referenceFile struct {
+	// Path within the embedded FS.
+	Path string
+	// SectionTitle is the heading used when inlining this file.
+	// If empty, the file's first H1 heading is used.
+	SectionTitle string
+}
 
-//go:embed templates/copilot.md
-var copilotTemplate string
+// referenceFiles lists all reference documents to concatenate after SKILL.md,
+// in the order they should appear in the output.
+var referenceFiles = []referenceFile{
+	{Path: "references/DQL-reference.md"},
+	{Path: "references/troubleshooting.md"},
+	{Path: "references/config-management.md"},
+	{Path: "references/resources/dashboards.md"},
+	{Path: "references/resources/notebooks.md"},
+}
 
-//go:embed templates/cursor.mdc
-var cursorTemplate string
-
-//go:embed templates/opencode.md
-var opencodeTemplate string
-
-// parsedTemplates holds pre-parsed templates keyed by agent name.
-// Populated by init() to catch syntax errors at startup.
-var parsedTemplates map[string]*template.Template
+// skillContent holds the concatenated skill document, built once at init time.
+var skillContent string
 
 func init() {
-	parsedTemplates = make(map[string]*template.Template, len(agents))
-	for _, a := range agents {
-		tmpl, err := template.New(a.Name).Parse(a.Template)
-		if err != nil {
-			panic(fmt.Sprintf("skills: failed to parse template for %s: %v", a.Name, err))
-		}
-		parsedTemplates[a.Name] = tmpl
+	content, err := buildSkillContent()
+	if err != nil {
+		panic(fmt.Sprintf("skills: failed to build skill content: %v", err))
 	}
+	skillContent = content
+}
+
+// buildSkillContent reads the embedded SKILL.md and all reference files,
+// strips YAML frontmatter, resolves relative markdown links, and
+// concatenates everything into a single document.
+func buildSkillContent() (string, error) {
+	// Read main SKILL.md
+	mainBytes, err := fs.ReadFile(dtctlskill.Content, "SKILL.md")
+	if err != nil {
+		return "", fmt.Errorf("reading SKILL.md: %w", err)
+	}
+	main := stripYAMLFrontmatter(string(mainBytes))
+
+	// Read all reference files
+	var refs []string
+	for _, ref := range referenceFiles {
+		data, err := fs.ReadFile(dtctlskill.Content, ref.Path)
+		if err != nil {
+			return "", fmt.Errorf("reading %s: %w", ref.Path, err)
+		}
+		content := string(data)
+		// Strip any YAML frontmatter from reference files too
+		content = stripYAMLFrontmatter(content)
+		refs = append(refs, content)
+	}
+
+	// Resolve relative markdown links in main — since reference content
+	// will be appended inline, links like [text](references/foo.md) become
+	// just the link text.
+	main = resolveRelativeLinks(main)
+
+	// Build the concatenated document
+	var sb strings.Builder
+	sb.WriteString(main)
+
+	for i, ref := range refs {
+		sb.WriteString("\n\n---\n\n")
+		// Resolve any cross-references between reference files
+		ref = resolveRelativeLinks(ref)
+		_ = i // index available for future use
+		sb.WriteString(ref)
+	}
+
+	return sb.String(), nil
+}
+
+// yamlFrontmatterRE matches YAML frontmatter at the start of a document:
+// a line with exactly "---", followed by content, followed by a line with
+// exactly "---", with an optional trailing newline.
+var yamlFrontmatterRE = regexp.MustCompile(`(?s)\A---\n.*?\n---\n?`)
+
+// stripYAMLFrontmatter removes YAML frontmatter (delimited by ---) from the
+// beginning of a markdown document.
+func stripYAMLFrontmatter(content string) string {
+	return yamlFrontmatterRE.ReplaceAllString(content, "")
+}
+
+// relativeLinkRE matches markdown links with relative paths to .md files.
+// Captures: [link text](relative/path.md)
+var relativeLinkRE = regexp.MustCompile(`\[([^\]]+)\]\([^)]*\.md\)`)
+
+// resolveRelativeLinks replaces markdown links to relative .md files with
+// just the link text, since the referenced content is inlined.
+func resolveRelativeLinks(content string) string {
+	return relativeLinkRE.ReplaceAllString(content, "$1")
 }
 
 // Agent represents a supported AI coding assistant.
@@ -54,8 +124,6 @@ type Agent struct {
 	// GlobalPath is the relative path from the user's home directory for global install.
 	// Empty means global install is not supported.
 	GlobalPath string
-	// Template is the embedded template content.
-	Template string
 	// EnvVar is the environment variable used to detect this agent.
 	EnvVar string
 	// DetectName is the name returned by aidetect.Detect() for this agent.
@@ -69,7 +137,6 @@ var agents = []Agent{
 		DisplayName: "Claude Code",
 		ProjectPath: filepath.Join(".claude", "commands", "dtctl.md"),
 		GlobalPath:  filepath.Join(".claude", "commands", "dtctl.md"),
-		Template:    claudeTemplate,
 		EnvVar:      "CLAUDECODE",
 		DetectName:  "claude-code",
 	},
@@ -78,7 +145,6 @@ var agents = []Agent{
 		DisplayName: "GitHub Copilot",
 		ProjectPath: filepath.Join(".github", "instructions", "dtctl.instructions.md"),
 		GlobalPath:  "",
-		Template:    copilotTemplate,
 		EnvVar:      "GITHUB_COPILOT",
 		DetectName:  "github-copilot",
 	},
@@ -87,7 +153,6 @@ var agents = []Agent{
 		DisplayName: "Cursor",
 		ProjectPath: filepath.Join(".cursor", "rules", "dtctl.mdc"),
 		GlobalPath:  "",
-		Template:    cursorTemplate,
 		EnvVar:      "CURSOR_AGENT",
 		DetectName:  "cursor",
 	},
@@ -96,13 +161,12 @@ var agents = []Agent{
 		DisplayName: "OpenCode",
 		ProjectPath: filepath.Join(".opencode", "commands", "dtctl.md"),
 		GlobalPath:  "",
-		Template:    opencodeTemplate,
 		EnvVar:      "OPENCODE",
 		DetectName:  "opencode",
 	},
 }
 
-// TemplateData contains variables available for template rendering.
+// TemplateData contains variables available for content rendering.
 type TemplateData struct {
 	Version string
 }
@@ -161,7 +225,8 @@ func DetectAgent() (Agent, bool) {
 	return Agent{}, false
 }
 
-// Render renders an agent's template with the current dtctl version.
+// Render renders the full skill content for an agent, using the current
+// dtctl version.
 func Render(agent Agent) (string, error) {
 	data := TemplateData{
 		Version: version.Version,
@@ -169,19 +234,32 @@ func Render(agent Agent) (string, error) {
 	return RenderWithData(agent, data)
 }
 
-// RenderWithData renders an agent's template with custom data.
+// RenderWithData renders the full skill content for an agent with custom data.
+// The content is the concatenated SKILL.md + all reference files, wrapped
+// with agent-specific formatting (e.g. Cursor MDC frontmatter).
 func RenderWithData(agent Agent, data TemplateData) (string, error) {
-	tmpl, ok := parsedTemplates[agent.Name]
-	if !ok {
-		return "", fmt.Errorf("no parsed template for agent %q", agent.Name)
+	return wrapForAgent(agent, skillContent, data)
+}
+
+// wrapForAgent applies agent-specific formatting to the skill content.
+func wrapForAgent(agent Agent, content string, data TemplateData) (string, error) {
+	var sb strings.Builder
+
+	switch agent.Name {
+	case "cursor":
+		// Cursor requires MDC format with YAML frontmatter.
+		sb.WriteString("---\n")
+		sb.WriteString(fmt.Sprintf("description: dtctl CLI skill (v%s) — kubectl-style CLI for Dynatrace\n", data.Version))
+		sb.WriteString("globs: [\"*.yaml\", \"*.yml\", \"*.json\", \"*.dql\"]\n")
+		sb.WriteString("---\n\n")
+		sb.WriteString(content)
+	default:
+		// Claude, Copilot, OpenCode — plain markdown with a version header.
+		sb.WriteString(fmt.Sprintf("<!-- dtctl skill v%s -->\n\n", data.Version))
+		sb.WriteString(content)
 	}
 
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to render template for %s: %w", agent.DisplayName, err)
-	}
-
-	return buf.String(), nil
+	return sb.String(), nil
 }
 
 // Install writes the skill file for the given agent to the appropriate location.
@@ -306,6 +384,12 @@ func StatusAll(baseDir string) []*StatusResult {
 		results[i] = Status(a, baseDir)
 	}
 	return results
+}
+
+// SkillContent returns the raw concatenated skill content (without
+// agent-specific wrapping). Exported for testing.
+func SkillContent() string {
+	return skillContent
 }
 
 // resolvePath determines the absolute path for the skill file.

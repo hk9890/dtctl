@@ -127,9 +127,9 @@ func TestRender(t *testing.T) {
 			if content == "" {
 				t.Errorf("Render(%s) returned empty content", agent.Name)
 			}
-			// Should NOT contain unrendered template syntax
-			if strings.Contains(content, "{{.Version}}") {
-				t.Errorf("Render(%s) contains unrendered template: {{.Version}}", agent.Name)
+			// All rendered content must contain dtctl
+			if !strings.Contains(content, "dtctl") {
+				t.Errorf("Render(%s) should contain 'dtctl'", agent.Name)
 			}
 		})
 	}
@@ -149,18 +149,51 @@ func TestRenderWithData(t *testing.T) {
 	}
 }
 
-func TestRenderWithData_UnknownAgent(t *testing.T) {
-	fakeAgent := Agent{
-		Name:        "nonexistent",
-		DisplayName: "Nonexistent",
-		Template:    "hello {{.Version}}",
+func TestRenderWithData_CursorFormat(t *testing.T) {
+	agent, _ := FindAgent("cursor")
+	data := TemplateData{Version: "2.0.0"}
+
+	content, err := RenderWithData(agent, data)
+	if err != nil {
+		t.Fatalf("RenderWithData error: %v", err)
 	}
-	_, err := RenderWithData(fakeAgent, TemplateData{Version: "1.0.0"})
-	if err == nil {
-		t.Fatal("expected error for unknown agent template")
+
+	// Cursor output must have MDC frontmatter
+	if !strings.HasPrefix(content, "---\n") {
+		t.Error("Cursor output should start with MDC frontmatter")
 	}
-	if !strings.Contains(err.Error(), "no parsed template") {
-		t.Errorf("expected 'no parsed template' error, got: %v", err)
+	if !strings.Contains(content, "description:") {
+		t.Error("Cursor output should have description in frontmatter")
+	}
+	if !strings.Contains(content, "globs:") {
+		t.Error("Cursor output should have globs in frontmatter")
+	}
+	if !strings.Contains(content, "2.0.0") {
+		t.Error("Cursor output should contain version 2.0.0")
+	}
+}
+
+func TestRenderWithData_MarkdownFormat(t *testing.T) {
+	for _, name := range []string{"claude", "copilot", "opencode"} {
+		t.Run(name, func(t *testing.T) {
+			agent, _ := FindAgent(name)
+			data := TemplateData{Version: "3.0.0"}
+
+			content, err := RenderWithData(agent, data)
+			if err != nil {
+				t.Fatalf("RenderWithData error: %v", err)
+			}
+
+			// Non-Cursor agents get an HTML comment version header
+			if !strings.Contains(content, "<!-- dtctl skill v3.0.0 -->") {
+				t.Errorf("output should contain HTML comment version header, got prefix: %q",
+					content[:min(100, len(content))])
+			}
+			// Must not have MDC frontmatter
+			if strings.HasPrefix(content, "---\n") {
+				t.Error("non-Cursor output should NOT start with MDC frontmatter")
+			}
+		})
 	}
 }
 
@@ -413,46 +446,6 @@ func TestAgentPaths(t *testing.T) {
 	}
 }
 
-func TestTemplateContent(t *testing.T) {
-	// Verify templates have reasonable content
-	for _, agent := range AllAgents() {
-		t.Run(agent.Name+" template not empty", func(t *testing.T) {
-			if agent.Template == "" {
-				t.Errorf("%s template is empty", agent.Name)
-			}
-		})
-
-		t.Run(agent.Name+" template has version placeholder", func(t *testing.T) {
-			if !strings.Contains(agent.Template, "{{.Version}}") {
-				t.Errorf("%s template missing {{.Version}} placeholder", agent.Name)
-			}
-		})
-
-		t.Run(agent.Name+" template mentions dtctl", func(t *testing.T) {
-			if !strings.Contains(agent.Template, "dtctl") {
-				t.Errorf("%s template should mention dtctl", agent.Name)
-			}
-		})
-
-		t.Run(agent.Name+" template mentions --agent flag", func(t *testing.T) {
-			if !strings.Contains(agent.Template, "--agent") {
-				t.Errorf("%s template should mention --agent flag", agent.Name)
-			}
-		})
-	}
-}
-
-func TestParsedTemplatesInitialized(t *testing.T) {
-	// Verify that all templates were parsed at init time
-	for _, agent := range AllAgents() {
-		t.Run(agent.Name, func(t *testing.T) {
-			if _, ok := parsedTemplates[agent.Name]; !ok {
-				t.Errorf("template for %s not found in parsedTemplates", agent.Name)
-			}
-		})
-	}
-}
-
 func TestResolvePath(t *testing.T) {
 	t.Run("project-local path", func(t *testing.T) {
 		agent, _ := FindAgent("claude")
@@ -489,4 +482,232 @@ func TestResolvePath(t *testing.T) {
 			t.Errorf("error should mention 'does not support global', got: %v", err)
 		}
 	})
+}
+
+// --- New tests for concatenation and content processing ---
+
+func TestSkillContent_NotEmpty(t *testing.T) {
+	content := SkillContent()
+	if content == "" {
+		t.Fatal("SkillContent() returned empty string")
+	}
+}
+
+func TestSkillContent_ContainsMainSections(t *testing.T) {
+	content := SkillContent()
+
+	// Must contain main SKILL.md content
+	mustContain := []string{
+		"Dynatrace Control with dtctl",
+		"Available Resources",
+		"Command Verbs",
+		"Output Modes",
+		"Template Variables",
+	}
+	for _, s := range mustContain {
+		if !strings.Contains(content, s) {
+			t.Errorf("SkillContent() should contain %q", s)
+		}
+	}
+}
+
+func TestSkillContent_ContainsReferenceContent(t *testing.T) {
+	content := SkillContent()
+
+	// Must contain content from each reference file
+	referenceMarkers := []struct {
+		file   string
+		marker string
+	}{
+		{"DQL-reference.md", "DQL Syntax Guide"},
+		{"troubleshooting.md", "dtctl Troubleshooting"},
+		{"config-management.md", "Configuration Management"},
+		{"dashboards.md", "Dashboards Resource"},
+		{"notebooks.md", "Notebooks Resource"},
+	}
+	for _, rm := range referenceMarkers {
+		if !strings.Contains(content, rm.marker) {
+			t.Errorf("SkillContent() should contain %q from %s", rm.marker, rm.file)
+		}
+	}
+}
+
+func TestSkillContent_NoYAMLFrontmatter(t *testing.T) {
+	content := SkillContent()
+
+	// Should not start with YAML frontmatter (it was stripped)
+	if strings.HasPrefix(content, "---\n") {
+		t.Error("SkillContent() should not start with YAML frontmatter")
+	}
+	// The original SKILL.md frontmatter key should not be present
+	if strings.Contains(content, "name: dtctl\ndescription:") {
+		t.Error("SkillContent() should not contain SKILL.md YAML frontmatter content")
+	}
+}
+
+func TestSkillContent_NoRelativeLinks(t *testing.T) {
+	content := SkillContent()
+
+	// Should not contain relative links to .md files
+	if strings.Contains(content, "](references/") {
+		t.Error("SkillContent() should not contain relative links to references/")
+	}
+	if strings.Contains(content, "](dashboards.md)") {
+		t.Error("SkillContent() should not contain relative links to dashboards.md")
+	}
+}
+
+func TestSkillContent_HasSeparators(t *testing.T) {
+	content := SkillContent()
+
+	// Reference sections should be separated by horizontal rules
+	separatorCount := strings.Count(content, "\n\n---\n\n")
+	if separatorCount < len(referenceFiles) {
+		t.Errorf("expected at least %d section separators, got %d",
+			len(referenceFiles), separatorCount)
+	}
+}
+
+func TestSkillContent_SubstantialSize(t *testing.T) {
+	content := SkillContent()
+
+	// The concatenated content should be much larger than the old templates.
+	// The source files total ~1,115 lines. With separators, we expect at
+	// least 800 lines (some frontmatter is stripped).
+	lines := strings.Count(content, "\n")
+	if lines < 800 {
+		t.Errorf("SkillContent() has only %d lines, expected 800+ (comprehensive skill content)", lines)
+	}
+}
+
+func TestStripYAMLFrontmatter(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{
+			name:   "with frontmatter",
+			input:  "---\nname: test\ndescription: hello\n---\n# Content",
+			expect: "# Content",
+		},
+		{
+			name:   "without frontmatter",
+			input:  "# Just Content\nSome text",
+			expect: "# Just Content\nSome text",
+		},
+		{
+			name:   "frontmatter with trailing newline",
+			input:  "---\nkey: val\n---\n\n# Title",
+			expect: "\n# Title",
+		},
+		{
+			name:   "empty string",
+			input:  "",
+			expect: "",
+		},
+		{
+			name:   "dashes in body not stripped",
+			input:  "# Title\n\n---\n\nSection",
+			expect: "# Title\n\n---\n\nSection",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stripYAMLFrontmatter(tt.input)
+			if result != tt.expect {
+				t.Errorf("stripYAMLFrontmatter(%q) = %q, want %q", tt.input, result, tt.expect)
+			}
+		})
+	}
+}
+
+func TestResolveRelativeLinks(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{
+			name:   "reference link",
+			input:  "see [troubleshooting](references/troubleshooting.md) for help",
+			expect: "see troubleshooting for help",
+		},
+		{
+			name:   "nested reference link",
+			input:  "see [dashboards](references/resources/dashboards.md) for details",
+			expect: "see dashboards for details",
+		},
+		{
+			name:   "simple filename link",
+			input:  "See [dashboards.md](dashboards.md) for full details.",
+			expect: "See dashboards.md for full details.",
+		},
+		{
+			name:   "non-md link preserved",
+			input:  "Visit [docs](https://example.com/docs) for more",
+			expect: "Visit [docs](https://example.com/docs) for more",
+		},
+		{
+			name:   "multiple links",
+			input:  "[a](foo.md) and [b](bar.md)",
+			expect: "a and b",
+		},
+		{
+			name:   "no links",
+			input:  "No links here",
+			expect: "No links here",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolveRelativeLinks(tt.input)
+			if result != tt.expect {
+				t.Errorf("resolveRelativeLinks(%q) = %q, want %q", tt.input, result, tt.expect)
+			}
+		})
+	}
+}
+
+func TestInstalledFileContent(t *testing.T) {
+	// Verify that installed files contain the full comprehensive content
+	for _, agent := range AllAgents() {
+		t.Run(agent.Name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			result, err := Install(agent, tmpDir, false, false)
+			if err != nil {
+				t.Fatalf("Install error: %v", err)
+			}
+
+			data, err := os.ReadFile(result.Path)
+			if err != nil {
+				t.Fatalf("ReadFile error: %v", err)
+			}
+
+			content := string(data)
+
+			// Must contain comprehensive content, not just stubs
+			mustContain := []string{
+				"Dynatrace Control with dtctl",
+				"DQL Syntax Guide",
+				"dtctl Troubleshooting",
+				"Configuration Management",
+				"Dashboards Resource",
+				"Notebooks Resource",
+			}
+			for _, s := range mustContain {
+				if !strings.Contains(content, s) {
+					t.Errorf("installed %s file missing %q", agent.Name, s)
+				}
+			}
+
+			// Installed files should be substantial (800+ lines)
+			lines := strings.Count(content, "\n")
+			if lines < 800 {
+				t.Errorf("installed %s file has only %d lines, expected 800+", agent.Name, lines)
+			}
+		})
+	}
 }
