@@ -655,15 +655,10 @@ dtctl delete edgeconnect <id>                    # Delete EdgeConnect
 
 ```bash
 # --- Matcher Operations ---
-
-# Verify if a matcher expression is valid
 dtctl exec openpipeline verify-matcher 'matchesValue(content, "error")'
-echo 'matchesValue(content, "error")' | dtctl exec openpipeline verify-matcher -
-# --- DQL Processor Operations ---
 
-# Verify if a DQL processor script is valid
+# --- DQL Processor Operations --
 dtctl exec openpipeline verify-processor 'fieldsAdd(environment: "production")'
-echo 'fieldsAdd(env: "prod")' | dtctl exec openpipeline verify-processor -
 
 # --- Processor Preview ---
 
