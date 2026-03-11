@@ -68,6 +68,7 @@ type TimeFormats struct {
 var MutatingVerbs = map[string]string{
 	"apply":   "OperationCreate",
 	"create":  "OperationCreate",
+	"debug":   "OperationUpdate",
 	"edit":    "OperationUpdate",
 	"delete":  "OperationDelete",
 	"restore": "OperationUpdate",
