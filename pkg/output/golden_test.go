@@ -577,6 +577,7 @@ func TestGolden_QueryDQL(t *testing.T) {
 
 	formats := map[string]string{
 		"table": "table",
+		"wide":  "wide",
 		"json":  "json",
 		"csv":   "csv",
 	}
@@ -722,6 +723,38 @@ func TestGolden_QueryDQL_Metadata_Table(t *testing.T) {
 		}
 		footer := FormatMetadataFooter(meta, fields)
 		assertGolden(t, "query/dql-metadata-filtered-table", buf.String()+footer)
+	})
+}
+
+func TestGolden_QueryDQL_Metadata_Wide(t *testing.T) {
+	records := dqlRecordsFixture()
+	meta := metadataFixture()
+
+	// Disable color for deterministic output
+	ResetColorCache()
+	SetPlainMode(true)
+	defer ResetColorCache()
+
+	t.Run("all", func(t *testing.T) {
+		var buf bytes.Buffer
+		printer := NewPrinterWithWriter("wide", &buf)
+		if err := printer.PrintList(records); err != nil {
+			t.Fatalf("PrintList failed: %v", err)
+		}
+		// Append metadata footer (same as printResults does for wide format)
+		footer := FormatMetadataFooter(meta, nil)
+		assertGolden(t, "query/dql-metadata-wide", buf.String()+footer)
+	})
+
+	t.Run("filtered", func(t *testing.T) {
+		fields := []string{"executionTimeMilliseconds", "scannedRecords", "queryId"}
+		var buf bytes.Buffer
+		printer := NewPrinterWithWriter("wide", &buf)
+		if err := printer.PrintList(records); err != nil {
+			t.Fatalf("PrintList failed: %v", err)
+		}
+		footer := FormatMetadataFooter(meta, fields)
+		assertGolden(t, "query/dql-metadata-filtered-wide", buf.String()+footer)
 	})
 }
 
