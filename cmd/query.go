@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
@@ -31,6 +32,15 @@ const (
 // isStderrTerminal checks if stderr is a terminal (for color output)
 func isStderrTerminal() bool {
 	return term.IsTerminal(int(os.Stderr.Fd()))
+}
+
+func isSupportedQueryOutputFormat(format string) bool {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "", "table", "wide", "json", "yaml", "yml", "csv", "snapshot", "chart", "sparkline", "spark", "barchart", "bar", "braille", "br":
+		return true
+	default:
+		return false
+	}
 }
 
 // queryCmd represents the query command
@@ -100,6 +110,10 @@ Examples:
   dtctl query "timeseries avg(dt.host.cpu.usage)" -o chart --width 150 --height 30
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if !isSupportedQueryOutputFormat(outputFormat) {
+			return fmt.Errorf("unsupported output format %q for query", outputFormat)
+		}
+
 		cfg, err := LoadConfig()
 		if err != nil {
 			return err
