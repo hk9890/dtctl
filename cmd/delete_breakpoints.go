@@ -13,7 +13,7 @@ import (
 
 var deleteBreakpointCmd = &cobra.Command{
 	Use:     "breakpoint <id|filename:line>",
-	Aliases: []string{"breakpoints", "bp", "brakpoints"},
+	Aliases: []string{"breakpoints", "bp"},
 	Short:   "Delete Live Debugger breakpoint(s)",
 	Long: `Delete Live Debugger breakpoints by mutable rule ID or by source location.
 

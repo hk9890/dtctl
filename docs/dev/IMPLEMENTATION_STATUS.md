@@ -15,7 +15,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Configuration management (YAML config, contexts, token storage)
 - [x] Context safety levels (readonly, readwrite-mine, readwrite-all, dangerously-unrestricted)
 - [x] HTTP client with retry, rate limiting, error handling
-- [x] Output formatters: JSON, YAML, table, wide, CSV, chart, sparkline, barchart
+- [x] Output formatters: JSON, YAML, table, wide, CSV, snapshot, chart, sparkline, barchart
 - [x] Global flags: `--context`, `--output`, `--verbose`, `--debug`, `--dry-run`, `--chunk-size`, `--show-diff`
 - [x] Shell completion (bash, zsh, fish)
 - [x] Automatic pagination with `--chunk-size` (default 500)
@@ -115,6 +115,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] File-based queries: `dtctl query -f query.dql`
 - [x] Template variables: `--set key=value`
 - [x] All output formats supported
+- [x] Decoded Live Debugger snapshots: `dtctl query "fetch application.snapshots | limit 5" -o snapshot`
 - [x] Chart output for timeseries: `dtctl query "timeseries ..." -o chart`
 - [x] Live mode with periodic updates: `--live`, `--interval`
 - [x] Watch mode with incremental updates: `--watch`, `--interval`
@@ -234,6 +235,17 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Open URL in browser: `--browser` flag
 - [x] JSON file support: `--data-file` flag
 - [x] Intent metadata: properties, required fields, descriptions
+
+### Live Debugger Features
+- [x] Configure workspace filters: `dtctl debug --filters key=value[,key=value...]`
+- [x] Create breakpoint: `dtctl create breakpoint File.java:line`
+- [x] List breakpoints: `dtctl get breakpoints`
+- [x] Describe breakpoint status by ID or location: `dtctl describe <id|filename:line>`
+- [x] Edit breakpoint condition/enabled state: `dtctl edit breakpoint <id|filename:line> --condition ... --enabled ...`
+- [x] Delete breakpoint by ID/location and bulk delete with confirmation: `dtctl delete breakpoint <id|filename:line|--all> [-y] [--dry-run]`
+- [x] Verbose GraphQL troubleshooting output with `-v/--debug`
+- [x] Safety checks applied to create/edit/delete and debug filter updates
+- [x] User guide: `docs/LIVE_DEBUGGER.md`
 
 ### Wait Features
 - [x] Wait for DQL query conditions: `dtctl wait query`

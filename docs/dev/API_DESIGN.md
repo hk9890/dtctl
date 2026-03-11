@@ -68,6 +68,7 @@ dtctl is the "Runtime" companion to Monaco's "Build time."
 - **Default**: Human-readable TUI tables (ASCII).
 - **JSON** (`-o json`): Raw API response for piping (jq).
 - **YAML** (`-o yaml`): Reconstructed YAML for copy-pasting.
+- **Snapshot** (`-o snapshot`): Decoded Live Debugger snapshot payloads for query results.
 - **Charts**: Sparklines, bar charts, and line charts for timeseries data.
 
 ### 5. Handling Identity (Naming)
@@ -185,7 +186,7 @@ dtctl query "fetch logs | limit 10"
 
 ```
 --context string      # Use a specific context
--o, --output string   # Output format: json|yaml|table|wide|name|custom-columns=...
+-o, --output string   # Output format: json|yaml|csv|table|wide|snapshot|chart|sparkline|barchart|braille
 --plain               # Plain output for machine processing (no colors, no interactive prompts)
 --no-headers          # Omit headers in table output
 -v, --verbose         # Verbose output (-v for details, -vv for full HTTP debug)
@@ -1564,6 +1565,36 @@ HOST-B  ████████████████████████
 **Note**: All timeseries output formats (`chart`, `sparkline`, `barchart`) require timeseries data 
 (records with `timeframe` and `interval` fields). If the data is not timeseries, they fall back 
 to JSON output with a warning. When more than 10 series are present, only the first 10 are displayed.
+
+### Snapshot (Live Debugger Query Output)
+```bash
+# Decode Live Debugger snapshot payloads from query results
+dtctl query "fetch application.snapshots | sort timestamp desc | limit 5" -o snapshot
+```
+
+Snapshot output enriches each record with `parsed_snapshot`, decoded from:
+- `snapshot.data`
+- `snapshot.string_map`
+
+This output mode is intended for Live Debugger snapshot inspection and automation-friendly post-processing.
+
+## Live Debugger Command Pattern
+
+Live Debugger follows the standard verb-noun grammar and avoids introducing a separate command tree:
+
+```bash
+dtctl debug --filters key=value[,key=value...]                 # configure workspace filters
+dtctl create breakpoint File.java:line                         # create breakpoint
+dtctl get breakpoints                                          # list breakpoints
+dtctl describe <breakpoint-id|filename:line>                   # describe breakpoint rollout/status
+dtctl edit breakpoint <id|filename:line> --condition "..."     # edit condition
+dtctl edit breakpoint <id|filename:line> --enabled true|false  # enable/disable
+dtctl delete breakpoint <id|filename:line|--all>               # delete breakpoints
+```
+
+Design notes:
+- `dtctl describe` keeps existing resource-subcommand behavior; breakpoint describe is only routed for breakpoint-like identifiers.
+- Mutating operations (`debug` filter update, `create`, `edit`, `delete`) must run safety checks, including in dry-run mode.
 
 ## Examples
 
