@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	debugFilters string
-	loadConfigForLiveDebugger      = LoadConfig
-	newClientFromConfigLiveDebugger = NewClientFromConfig
-	newLiveDebuggerHandler         = livedebugger.NewHandler
+	debugFilters                     string
+	loadConfigForLiveDebugger        = LoadConfig
+	newClientFromConfigLiveDebugger  = NewClientFromConfig
+	newLiveDebuggerHandler           = livedebugger.NewHandler
 	getOrCreateWorkspaceLiveDebugger = func(handler *livedebugger.Handler, projectPath string) (map[string]interface{}, string, error) {
 		return handler.GetOrCreateWorkspace(projectPath)
 	}

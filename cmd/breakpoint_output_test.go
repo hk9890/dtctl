@@ -76,8 +76,8 @@ func TestPrintBreakpointMessage_Agent(t *testing.T) {
 	})
 
 	var envelope struct {
-		OK      bool `json:"ok"`
-		Result  struct {
+		OK     bool `json:"ok"`
+		Result struct {
 			Message string `json:"message"`
 		} `json:"result"`
 		Context struct {

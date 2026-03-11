@@ -192,13 +192,13 @@ func TestPrintBreakpointStatusResult(t *testing.T) {
 	rootCmd.SetOut(&out)
 
 	result := breakpointStatusResult{
-		ID:            "bp-1",
-		Location:      "OrderController.java:306",
-		Enabled:       true,
-		Status:        "Warning",
-		ActiveRooks:   []breakpointRookInfo{{ID: "rook-1", Hostname: "host-a", Executable: "java"}},
-		ActiveTips:    []breakpointTip{{Description: "Trigger the line", DocsLink: "https://docs.example/trigger"}},
-		Warnings:      []breakpointStatusIssue{{Title: "Source file has changed", Description: "Redeploy source map"}},
+		ID:          "bp-1",
+		Location:    "OrderController.java:306",
+		Enabled:     true,
+		Status:      "Warning",
+		ActiveRooks: []breakpointRookInfo{{ID: "rook-1", Hostname: "host-a", Executable: "java"}},
+		ActiveTips:  []breakpointTip{{Description: "Trigger the line", DocsLink: "https://docs.example/trigger"}},
+		Warnings:    []breakpointStatusIssue{{Title: "Source file has changed", Description: "Redeploy source map"}},
 		ControllerWarnings: []breakpointStatusIssue{{
 			Title:       "Partial deployment",
 			Description: "Some agents missing",
