@@ -181,7 +181,36 @@ func decodeSnapshotDataToGeneric(data string, stringCache []string) (interface{}
 	}
 
 	caches := newVariant2CachesFromAugReport(rawAugReport)
-	return variant2ToDict(rawAugReport.GetArguments2(), caches, rawAugReport.GetReverseListOrder()), nil
+	decoded := variant2ToDict(rawAugReport.GetArguments2(), caches, rawAugReport.GetReverseListOrder())
+	return normalizeSnapshotFieldNames(decoded), nil
+}
+
+func normalizeSnapshotFieldNames(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(typed))
+		for key, item := range typed {
+			switch key {
+			case "@CT", "@OS":
+				continue
+			case "@OT":
+				out["type"] = normalizeSnapshotFieldNames(item)
+			case "@value":
+				out["value"] = normalizeSnapshotFieldNames(item)
+			default:
+				out[key] = normalizeSnapshotFieldNames(item)
+			}
+		}
+		return out
+	case []interface{}:
+		out := make([]interface{}, len(typed))
+		for i := range typed {
+			out[i] = normalizeSnapshotFieldNames(typed[i])
+		}
+		return out
+	default:
+		return value
+	}
 }
 
 type variant2Caches struct {

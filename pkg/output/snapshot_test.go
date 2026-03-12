@@ -133,11 +133,17 @@ func TestSnapshotPrinter_EnrichesRecord(t *testing.T) {
 	if !ok {
 		t.Fatalf("parsed_snapshot.root missing: %#v", parsedSnapshot)
 	}
-	if root["@value"] != "hello" {
-		t.Fatalf("parsed_snapshot.root.@value = %#v, want hello", root["@value"])
+	if root["value"] != "hello" {
+		t.Fatalf("parsed_snapshot.root.value = %#v, want hello", root["value"])
 	}
-	if root["@CT"] == nil {
-		t.Fatalf("parsed_snapshot.root.@CT missing: %#v", root)
+	if _, exists := root["@CT"]; exists {
+		t.Fatalf("parsed_snapshot.root.@CT should be removed: %#v", root)
+	}
+	if _, exists := root["@OS"]; exists {
+		t.Fatalf("parsed_snapshot.root.@OS should be removed: %#v", root)
+	}
+	if root["type"] != "java.lang.String" {
+		t.Fatalf("parsed_snapshot.root.type = %#v, want java.lang.String", root["type"])
 	}
 
 	if _, exists := record["snapshot.parsed"]; exists {
@@ -236,36 +242,36 @@ func TestSnapshotPrinter_HandlesVariant2EdgeCases(t *testing.T) {
 	parsed := record["parsed_snapshot"].(map[string]interface{})
 
 	formattedOut := parsed["msg"].(map[string]interface{})
-	if formattedOut["@value"] != "formatted" {
+	if formattedOut["value"] != "formatted" {
 		t.Fatalf("formatted value mismatch: %#v", formattedOut)
 	}
 
 	largeIntOut := parsed["formatted"].(map[string]interface{})
-	if largeIntOut["@value"] != "9223372036854775807123" {
+	if largeIntOut["value"] != "9223372036854775807123" {
 		t.Fatalf("large int value mismatch: %#v", largeIntOut)
 	}
 
 	setOut := parsed["9223372036854775807123"].(map[string]interface{})
-	if setOut["@CT"].(float64) != setType {
-		t.Fatalf("expected set common type, got %#v", setOut)
+	if _, exists := setOut["@CT"]; exists {
+		t.Fatalf("set output should not include @CT: %#v", setOut)
 	}
-	setValues := setOut["@value"].([]interface{})
+	setValues := setOut["value"].([]interface{})
 	first := setValues[0].(map[string]interface{})
-	if first["@value"] != "item-b" {
+	if first["value"] != "item-b" {
 		t.Fatalf("expected reverse list order to apply to set values, got %#v", setValues)
 	}
 
 	errorOut := parsed["java.util.Set"].(map[string]interface{})
-	if errorOut["@CT"].(float64) != namespaceType {
-		t.Fatalf("expected error namespace output, got %#v", errorOut)
+	if _, exists := errorOut["@CT"]; exists {
+		t.Fatalf("error output should not include @CT: %#v", errorOut)
 	}
-	errorValue := errorOut["@value"].(map[string]interface{})
+	errorValue := errorOut["value"].(map[string]interface{})
 	if errorValue["message"] != "boom" {
 		t.Fatalf("error message mismatch: %#v", errorValue)
 	}
 
 	timeOut := parsed["item-a"].(map[string]interface{})
-	if timeOut["@value"] != "2023-11-14T22:13:20.123000Z" {
+	if timeOut["value"] != "2023-11-14T22:13:20.123000Z" {
 		t.Fatalf("timestamp format mismatch: %#v", timeOut)
 	}
 }
