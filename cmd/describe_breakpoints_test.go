@@ -116,33 +116,41 @@ func TestDeriveOverallBreakpointStatusDisabled(t *testing.T) {
 	}
 }
 
-func TestDescribeCommandAcceptsSingleIdentifier(t *testing.T) {
-	if err := describeCmd.Args(describeCmd, []string{"OrderController.java:306"}); err != nil {
-		t.Fatalf("expected single identifier to be accepted, got error: %v", err)
+func TestDescribeBreakpointCommandRegistration(t *testing.T) {
+	breakpointCmd, _, err := describeCmd.Find([]string{"breakpoint"})
+	if err != nil {
+		t.Fatalf("expected describe breakpoint command to exist, got error: %v", err)
+	}
+	if breakpointCmd == nil || breakpointCmd.Name() != "breakpoint" {
+		t.Fatalf("expected describe breakpoint command to exist")
+	}
+
+	breakpointsCmd, _, err := describeCmd.Find([]string{"breakpoints"})
+	if err != nil {
+		t.Fatalf("expected describe breakpoints alias to resolve, got error: %v", err)
+	}
+	if breakpointsCmd == nil || breakpointsCmd.Name() != "breakpoint" {
+		t.Fatalf("expected describe breakpoints alias to resolve to breakpoint command")
+	}
+
+	bpCmd, _, err := describeCmd.Find([]string{"bp"})
+	if err != nil {
+		t.Fatalf("expected describe bp alias to resolve, got error: %v", err)
+	}
+	if bpCmd == nil || bpCmd.Name() != "breakpoint" {
+		t.Fatalf("expected describe bp alias to resolve to breakpoint command")
 	}
 }
 
-func TestShouldHandleAsBreakpointDescribe(t *testing.T) {
-	tests := []struct {
-		name       string
-		identifier string
-		want       bool
-	}{
-		{name: "filename line", identifier: "OrderController.java:306", want: true},
-		{name: "dtctl rule id", identifier: "dtctl-rule-abc123", want: true},
-		{name: "bp prefix", identifier: "bp-1", want: true},
-		{name: "numeric id", identifier: "123456789", want: true},
-		{name: "slo resource token", identifier: "slo", want: false},
-		{name: "arbitrary string", identifier: "somestring", want: false},
-		{name: "empty", identifier: "", want: false},
+func TestDescribeBreakpointCommandArgs(t *testing.T) {
+	if err := describeBreakpointCmd.Args(describeBreakpointCmd, []string{"OrderController.java:306"}); err != nil {
+		t.Fatalf("expected filename:line to be accepted, got error: %v", err)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldHandleAsBreakpointDescribe(tt.identifier); got != tt.want {
-				t.Fatalf("shouldHandleAsBreakpointDescribe(%q) = %v, want %v", tt.identifier, got, tt.want)
-			}
-		})
+	if err := describeBreakpointCmd.Args(describeBreakpointCmd, []string{"bp-1"}); err != nil {
+		t.Fatalf("expected id to be accepted, got error: %v", err)
+	}
+	if err := describeBreakpointCmd.Args(describeBreakpointCmd, nil); err == nil {
+		t.Fatalf("expected missing identifier error")
 	}
 }
 
@@ -283,20 +291,11 @@ func TestPrintBreakpointIssuesSection(t *testing.T) {
 	}
 }
 
-func TestRunDescribeCommand(t *testing.T) {
-	t.Run("no args requires subcommand", func(t *testing.T) {
-		err := runDescribeCommand(describeCmd, nil)
-		if err == nil {
-			t.Fatalf("expected subcommand error")
-		}
-	})
-
-	t.Run("non-breakpoint identifier requires subcommand", func(t *testing.T) {
-		err := runDescribeCommand(describeCmd, []string{"slo"})
-		if err == nil {
-			t.Fatalf("expected subcommand error")
-		}
-	})
+func TestDescribeCommandRequiresSubcommand(t *testing.T) {
+	err := requireSubcommand(describeCmd, nil)
+	if err == nil {
+		t.Fatalf("expected subcommand error")
+	}
 }
 
 func TestRunDescribeBreakpoint_LoadConfigError(t *testing.T) {

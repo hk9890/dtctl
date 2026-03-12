@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -12,6 +11,25 @@ import (
 
 	"github.com/dynatrace-oss/dtctl/pkg/resources/livedebugger"
 )
+
+var describeBreakpointCmd = &cobra.Command{
+	Use:     "breakpoint <id|filename:line>",
+	Aliases: []string{"breakpoints", "bp"},
+	Short:   "Show status details for Live Debugger breakpoint(s)",
+	Long: `Show detailed status information for a Live Debugger breakpoint.
+
+Examples:
+  # Describe a breakpoint by mutable rule ID
+  dtctl describe breakpoint dtctl-rule-abc123
+
+  # Describe all breakpoints at a source location
+  dtctl describe breakpoint OrderController.java:306
+`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runDescribeBreakpoint(cmd, args[0])
+	},
+}
 
 type breakpointStatusResult struct {
 	ID                 string                  `json:"id" yaml:"id"`
@@ -47,43 +65,6 @@ type breakpointStatusIssue struct {
 	Args        interface{}          `json:"args,omitempty" yaml:"args,omitempty"`
 	Rooks       []breakpointRookInfo `json:"rooks,omitempty" yaml:"rooks,omitempty"`
 	Controllers []string             `json:"controllers,omitempty" yaml:"controllers,omitempty"`
-}
-
-func runDescribeCommand(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return requireSubcommand(cmd, args)
-	}
-
-	if !shouldHandleAsBreakpointDescribe(args[0]) {
-		return requireSubcommand(cmd, args)
-	}
-
-	return runDescribeBreakpoint(cmd, args[0])
-}
-
-func shouldHandleAsBreakpointDescribe(identifier string) bool {
-	trimmed := strings.TrimSpace(identifier)
-	if trimmed == "" {
-		return false
-	}
-
-	if _, _, err := parseBreakpoint(trimmed); err == nil {
-		return true
-	}
-
-	if strings.HasPrefix(trimmed, "dtctl-rule-") {
-		return true
-	}
-
-	if strings.HasPrefix(trimmed, "bp-") {
-		return true
-	}
-
-	if _, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
-		return true
-	}
-
-	return false
 }
 
 func runDescribeBreakpoint(cmd *cobra.Command, identifier string) error {

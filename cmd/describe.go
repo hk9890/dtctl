@@ -42,8 +42,7 @@ Supported resources:
 
   # Describe an SLO to see its evaluation status
   dtctl describe slo <slo-id>`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runDescribeCommand,
+	RunE: requireSubcommand,
 }
 
 var describeAzureProviderCmd = &cobra.Command{
@@ -326,6 +325,7 @@ func init() {
 	describeAWSProviderCmd.AddCommand(newNotImplementedProviderResourceCommand("aws", "monitoring"))
 	rootCmd.AddCommand(describeCmd)
 	describeCmd.AddCommand(describeWorkflowCmd)
+	describeCmd.AddCommand(describeBreakpointCmd)
 	describeCmd.AddCommand(describeWorkflowExecutionCmd)
 	describeCmd.AddCommand(describeDashboardCmd)
 	describeCmd.AddCommand(describeNotebookCmd)

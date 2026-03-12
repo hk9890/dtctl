@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -232,6 +233,35 @@ func TestTokenManagerRefreshTokenAdditionalBranches(t *testing.T) {
 			t.Fatalf("expected save failure")
 		}
 	})
+}
+
+func TestTokenManagerRefreshToken_NilHTTPDoFallback(t *testing.T) {
+	tm, _ := NewTokenManager(DefaultOAuthConfig())
+	tm.deps.keyringAvailable = func() bool { return true }
+	tm.deps.getToken = func(ts *config.TokenStore, name string) (string, error) {
+		return storedJSON(t, StoredToken{Name: name, TokenSet: TokenSet{RefreshToken: "r1"}}), nil
+	}
+	tm.deps.setToken = func(ts *config.TokenStore, name, token string) error { return nil }
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"a2","refresh_token":"r2","expires_in":60}`))
+	}))
+	defer server.Close()
+
+	tm.flow.config.TokenURL = server.URL
+	tm.flow.httpDo = nil
+
+	tokens, err := tm.RefreshToken("abc")
+	if err != nil {
+		t.Fatalf("expected nil-httpDo fallback refresh to succeed, got: %v", err)
+	}
+	if tokens.AccessToken != "a2" || tokens.RefreshToken != "r2" {
+		t.Fatalf("unexpected refreshed tokens: %#v", tokens)
+	}
 }
 
 func TestTokenManagerGetTokenInfo(t *testing.T) {

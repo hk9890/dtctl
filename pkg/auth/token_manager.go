@@ -38,7 +38,7 @@ func NewTokenManager(oauthConfig *OAuthConfig) (*TokenManager, error) {
 	}
 
 	return &TokenManager{
-		flow:        &OAuthFlow{config: oauthConfig},
+		flow:        &OAuthFlow{config: oauthConfig, openURL: defaultOAuthOpenURL, httpDo: defaultOAuthHTTPDo},
 		tokenStore:  config.NewTokenStore(),
 		environment: oauthConfig.Environment,
 		deps: tokenStoreDeps{
