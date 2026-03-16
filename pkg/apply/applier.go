@@ -14,6 +14,7 @@ import (
 	"github.com/dynatrace-oss/dtctl/pkg/resources/azuremonitoringconfig"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/bucket"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
+	"github.com/dynatrace-oss/dtctl/pkg/resources/extension"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpconnection"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpmonitoringconfig"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/settings"
@@ -100,6 +101,7 @@ const (
 	ResourceAzureMonitoringConfig ResourceType = "azure_monitoring_config"
 	ResourceGCPConnection         ResourceType = "gcp_connection"
 	ResourceGCPMonitoringConfig   ResourceType = "gcp_monitoring_config"
+	ResourceExtensionConfig       ResourceType = "extension_config"
 	ResourceUnknown               ResourceType = "unknown"
 )
 
@@ -161,6 +163,8 @@ func (a *Applier) Apply(fileData []byte, opts ApplyOptions) ([]ApplyResult, erro
 		result, err = a.applyAzureMonitoringConfig(jsonData)
 	case ResourceGCPMonitoringConfig:
 		result, err = a.applyGCPMonitoringConfig(jsonData)
+	case ResourceExtensionConfig:
+		result, err = a.applyExtensionConfig(jsonData)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -215,6 +219,8 @@ func detectResourceType(data []byte) (ResourceType, error) {
 			return ResourceDashboard, nil
 		case "notebook":
 			return ResourceNotebook, nil
+		case "extension_monitoring_config":
+			return ResourceExtensionConfig, nil
 		}
 	}
 
@@ -724,6 +730,11 @@ func (a *Applier) dryRun(resourceType ResourceType, data []byte) error {
 		return a.dryRunDocument(resourceType, doc, data)
 	}
 
+	// Extension monitoring configs have specific fields
+	if resourceType == ResourceExtensionConfig {
+		return a.dryRunExtensionConfig(doc)
+	}
+
 	// For other resources, show basic info
 	fmt.Printf("Dry run: would apply %s resource\n", resourceType)
 
@@ -738,6 +749,34 @@ func (a *Applier) dryRun(resourceType ResourceType, data []byte) error {
 	}
 	if name != "" {
 		fmt.Printf("  Name: %s\n", name)
+	}
+
+	fmt.Println("\nResource content validated successfully")
+	return nil
+}
+
+// dryRunExtensionConfig performs dry-run validation for extension monitoring configs
+func (a *Applier) dryRunExtensionConfig(doc map[string]interface{}) error {
+	extensionName, _ := doc["extensionName"].(string)
+	objectID, _ := doc["objectId"].(string)
+	scope, _ := doc["scope"].(string)
+
+	// Validate required fields to align dry-run with real apply behavior
+	if extensionName == "" {
+		return fmt.Errorf("extensionName is required for extension monitoring configuration")
+	}
+
+	if objectID != "" {
+		fmt.Println("Dry run: would update extension monitoring configuration")
+		fmt.Printf("  Config ID: %s\n", objectID)
+	} else {
+		fmt.Println("Dry run: would create extension monitoring configuration")
+	}
+	if extensionName != "" {
+		fmt.Printf("  Extension: %s\n", extensionName)
+	}
+	if scope != "" {
+		fmt.Printf("  Scope:     %s\n", scope)
 	}
 
 	fmt.Println("\nResource content validated successfully")
@@ -1454,6 +1493,70 @@ func (a *Applier) applyGCPMonitoringConfig(data []byte) (ApplyResult, error) {
 			Warnings:     warnings,
 		},
 		Scope: config.Scope,
+	}, nil
+}
+
+// applyExtensionConfig applies an extension monitoring configuration.
+// Detects create vs update by checking for an objectId field in the payload.
+func (a *Applier) applyExtensionConfig(data []byte) (ApplyResult, error) {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("failed to parse extension config JSON: %w", err)
+	}
+
+	extensionName, _ := raw["extensionName"].(string)
+	if extensionName == "" {
+		return nil, fmt.Errorf("extensionName is required in extension config payload")
+	}
+
+	objectID, _ := raw["objectId"].(string)
+
+	// Build the create/update body (scope + value only)
+	var config extension.MonitoringConfigurationCreate
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse extension config body: %w", err)
+	}
+
+	handler := extension.NewHandler(a.client)
+
+	if objectID == "" {
+		if err := a.checkSafety(safety.OperationCreate, safety.OwnershipUnknown); err != nil {
+			return nil, err
+		}
+
+		result, err := handler.CreateMonitoringConfiguration(extensionName, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create extension monitoring configuration: %w", err)
+		}
+
+		return &ExtensionConfigApplyResult{
+			ApplyResultBase: ApplyResultBase{
+				Action:       ActionCreated,
+				ResourceType: "extension_config",
+				ID:           result.ObjectID,
+			},
+			ExtensionName: extensionName,
+			Scope:         result.Scope,
+		}, nil
+	}
+
+	if err := a.checkSafety(safety.OperationUpdate, safety.OwnershipUnknown); err != nil {
+		return nil, err
+	}
+
+	result, err := handler.UpdateMonitoringConfiguration(extensionName, objectID, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update extension monitoring configuration: %w", err)
+	}
+
+	return &ExtensionConfigApplyResult{
+		ApplyResultBase: ApplyResultBase{
+			Action:       ActionUpdated,
+			ResourceType: "extension_config",
+			ID:           result.ObjectID,
+		},
+		ExtensionName: extensionName,
+		Scope:         result.Scope,
 	}, nil
 }
 

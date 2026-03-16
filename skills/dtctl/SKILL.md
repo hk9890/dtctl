@@ -54,6 +54,8 @@ dtctl uses a uniform pattern for all resource types. Discover schema from actual
 | copilot-skill | copilot-skills |
 | dashboard | dash |
 | edgeconnect | ec |
+| extension | ext, extensions |
+| extension-config | extcfg, extension-configs |
 | function | fn, func |
 | group | groups |
 | intent | intents |
@@ -281,6 +283,7 @@ For detailed visualizationSettings (singleValue, charts, tables, thresholds, uni
 - **Multi-tenant setup**: [references/config-management.md](references/config-management.md)
 - **DQL syntax and templates**: [references/DQL-reference.md](references/DQL-reference.md)
 - **Notebooks**: [references/resources/notebooks.md](references/resources/notebooks.md)
+- **Extensions**: [references/resources/extensions.md](references/resources/extensions.md)
 - **CLI help**: `dtctl --help`, `dtctl <command> --help`
 
 ## Safety Reminders

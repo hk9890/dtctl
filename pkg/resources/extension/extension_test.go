@@ -1,0 +1,1031 @@
+package extension
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"testing"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/dynatrace-oss/dtctl/pkg/client"
+)
+
+func TestNewHandler(t *testing.T) {
+	c, err := client.New("https://test.dynatrace.com", "test-token")
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	h := NewHandler(c)
+
+	if h == nil {
+		t.Fatal("NewHandler() returned nil")
+	}
+	if h.client == nil {
+		t.Error("Handler.client is nil")
+	}
+}
+
+func TestList(t *testing.T) {
+	tests := []struct {
+		name          string
+		chunkSize     int64
+		nameFilter    string
+		pages         []ExtensionList
+		expectError   bool
+		errorContains string
+		validate      func(*testing.T, *ExtensionList)
+	}{
+		{
+			name:      "successful list single page",
+			chunkSize: 0,
+			pages: []ExtensionList{
+				{
+					TotalCount: 2,
+					Items: []Extension{
+						{ExtensionName: "com.dynatrace.extension.host-monitoring", Version: "1.2.3"},
+						{ExtensionName: "com.dynatrace.extension.jmx", Version: "2.0.0"},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *ExtensionList) {
+				if len(result.Items) != 2 {
+					t.Errorf("expected 2 extensions, got %d", len(result.Items))
+				}
+				if result.TotalCount != 2 {
+					t.Errorf("expected TotalCount 2, got %d", result.TotalCount)
+				}
+			},
+		},
+		{
+			name:      "paginated list with chunking",
+			chunkSize: 10,
+			pages: []ExtensionList{
+				{
+					TotalCount:  3,
+					NextPageKey: "page2",
+					Items: []Extension{
+						{ExtensionName: "ext-1", Version: "1.0.0"},
+						{ExtensionName: "ext-2", Version: "2.0.0"},
+					},
+				},
+				{
+					TotalCount: 3,
+					Items: []Extension{
+						{ExtensionName: "ext-3", Version: "3.0.0"},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *ExtensionList) {
+				if len(result.Items) != 3 {
+					t.Errorf("expected 3 extensions across pages, got %d", len(result.Items))
+				}
+				if result.TotalCount != 3 {
+					t.Errorf("expected TotalCount 3, got %d", result.TotalCount)
+				}
+			},
+		},
+		{
+			name:      "empty list",
+			chunkSize: 0,
+			pages: []ExtensionList{
+				{
+					TotalCount: 0,
+					Items:      []Extension{},
+				},
+			},
+			validate: func(t *testing.T, result *ExtensionList) {
+				if len(result.Items) != 0 {
+					t.Errorf("expected 0 extensions, got %d", len(result.Items))
+				}
+			},
+		},
+		{
+			name:       "with name filter",
+			chunkSize:  0,
+			nameFilter: "sql",
+			pages: []ExtensionList{
+				{
+					TotalCount: 4,
+					Items: []Extension{
+						{ExtensionName: "com.dynatrace.extension.host-monitoring", Version: "1.0.0"},
+						{ExtensionName: "com.dynatrace.extension.sql-oracle", Version: "2.0.0"},
+						{ExtensionName: "com.dynatrace.extension.mysql", Version: "3.0.0"},
+						{ExtensionName: "com.dynatrace.extension.sql-db2", Version: "1.5.0"},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *ExtensionList) {
+				// API returns all 4, client-side filter keeps only those containing "sql" (case-insensitive)
+				if len(result.Items) != 3 {
+					t.Errorf("expected 3 filtered extensions, got %d", len(result.Items))
+				}
+				expected := map[string]bool{
+					"com.dynatrace.extension.sql-oracle": true,
+					"com.dynatrace.extension.mysql":      true,
+					"com.dynatrace.extension.sql-db2":    true,
+				}
+				for _, ext := range result.Items {
+					if !expected[ext.ExtensionName] {
+						t.Errorf("unexpected extension in filtered result: %s", ext.ExtensionName)
+					}
+				}
+			},
+		},
+		{
+			name:      "chunk size capped to API maximum",
+			chunkSize: 500,
+			pages: []ExtensionList{
+				{
+					TotalCount: 1,
+					Items: []Extension{
+						{ExtensionName: "ext-1", Version: "1.0.0"},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *ExtensionList) {
+				if len(result.Items) != 1 {
+					t.Errorf("expected 1 extension, got %d", len(result.Items))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pageIndex := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/platform/extensions/v2/extensions" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				// Simulate API page-size limit (rejects > maxPageSize)
+				if ps := r.URL.Query().Get("page-size"); ps != "" {
+					pageSizeVal, _ := strconv.ParseInt(ps, 10, 64)
+					if pageSizeVal > maxPageSize {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte(`{"error":"page-size exceeds maximum"}`))
+						return
+					}
+				}
+
+				if tt.nameFilter != "" {
+					name := r.URL.Query().Get("name")
+					if name != tt.nameFilter {
+						t.Errorf("expected name filter %q, got %q", tt.nameFilter, name)
+					}
+				}
+
+				if pageIndex >= len(tt.pages) {
+					t.Error("received more requests than expected pages")
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(tt.pages[pageIndex])
+				pageIndex++
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.List(tt.nameFilter, tt.chunkSize)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, result)
+			}
+		})
+	}
+}
+
+func TestGet(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		statusCode    int
+		response      ExtensionVersionList
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful get",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			statusCode:    200,
+			response: ExtensionVersionList{
+				TotalCount: 2,
+				Items: []ExtensionVersion{
+					{Version: "1.2.3", ExtensionName: "com.dynatrace.extension.host-monitoring"},
+					{Version: "1.2.2", ExtensionName: "com.dynatrace.extension.host-monitoring"},
+				},
+			},
+		},
+		{
+			name:          "not found",
+			extensionName: "com.dynatrace.extension.nonexistent",
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+		{
+			name:          "access denied",
+			extensionName: "com.dynatrace.extension.restricted",
+			statusCode:    403,
+			expectError:   true,
+			errorContains: "access denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.Get(tt.extensionName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(result.Items) != len(tt.response.Items) {
+				t.Errorf("expected %d versions, got %d", len(tt.response.Items), len(result.Items))
+			}
+		})
+	}
+}
+
+func TestGetVersion(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		version       string
+		statusCode    int
+		response      ExtensionDetails
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful get version",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			version:       "1.2.3",
+			statusCode:    200,
+			response: ExtensionDetails{
+				ExtensionName:       "com.dynatrace.extension.host-monitoring",
+				Version:             "1.2.3",
+				Author:              ExtensionAuthor{Name: "Dynatrace"},
+				DataSources:         []string{"snmp", "wmi"},
+				FeatureSets:         []string{"default", "advanced"},
+				MinDynatraceVersion: "1.250",
+			},
+		},
+		{
+			name:          "version not found",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			version:       "99.99.99",
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/" + tt.version
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.GetVersion(tt.extensionName, tt.version)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.ExtensionName != tt.response.ExtensionName {
+				t.Errorf("expected name %q, got %q", tt.response.ExtensionName, result.ExtensionName)
+			}
+			if result.Version != tt.response.Version {
+				t.Errorf("expected version %q, got %q", tt.response.Version, result.Version)
+			}
+			if result.Author.Name != tt.response.Author.Name {
+				t.Errorf("expected author %q, got %q", tt.response.Author.Name, result.Author.Name)
+			}
+		})
+	}
+}
+
+func TestGetEnvironmentConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		statusCode    int
+		response      ExtensionEnvironmentConfig
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful get config",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			statusCode:    200,
+			response:      ExtensionEnvironmentConfig{Version: "1.2.3"},
+		},
+		{
+			name:          "no active config",
+			extensionName: "com.dynatrace.extension.inactive",
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "no active environment configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/environmentConfiguration"
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.GetEnvironmentConfig(tt.extensionName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Version != tt.response.Version {
+				t.Errorf("expected version %q, got %q", tt.response.Version, result.Version)
+			}
+		})
+	}
+}
+
+func TestListMonitoringConfigurations(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		version       string
+		chunkSize     int64
+		statusCode    int
+		response      MonitoringConfigurationList
+		expectedCount int
+		expectedIDs   []string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful list",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			chunkSize:     0,
+			statusCode:    200,
+			response: MonitoringConfigurationList{
+				TotalCount: 2,
+				Items: []MonitoringConfiguration{
+					{ObjectID: "config-1", Scope: "HOST-123"},
+					{ObjectID: "config-2", Scope: "HOST_GROUP-456"},
+				},
+			},
+			expectedCount: 2,
+		},
+		{
+			name:          "with version filter",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			version:       "1.2.3",
+			chunkSize:     0,
+			statusCode:    200,
+			response: MonitoringConfigurationList{
+				TotalCount: 3,
+				Items: []MonitoringConfiguration{
+					{ObjectID: "config-1", Scope: "HOST-123", Value: json.RawMessage(`{"version":"1.2.3","enabled":true}`)},
+					{ObjectID: "config-2", Scope: "HOST-456", Value: json.RawMessage(`{"version":"2.0.0","enabled":true}`)},
+					{ObjectID: "config-3", Scope: "HOST-789", Value: json.RawMessage(`{"version":"1.2.3","enabled":false}`)},
+				},
+			},
+			expectedCount: 2,
+			expectedIDs:   []string{"config-1", "config-3"},
+		},
+		{
+			name:          "extension not found",
+			extensionName: "com.dynatrace.extension.nonexistent",
+			chunkSize:     0,
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/monitoring-configurations"
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				// NOTE: Implementation does not set version as a query param, so do not check for it here.
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.ListMonitoringConfigurations(tt.extensionName, tt.version, tt.chunkSize)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			expectedCount := tt.expectedCount
+			if expectedCount == 0 {
+				expectedCount = len(tt.response.Items)
+			}
+			if len(result.Items) != expectedCount {
+				t.Errorf("expected %d configs, got %d", expectedCount, len(result.Items))
+			}
+			if len(tt.expectedIDs) > 0 {
+				for i, id := range tt.expectedIDs {
+					if i < len(result.Items) && result.Items[i].ObjectID != id {
+						t.Errorf("expected item %d to have ID %q, got %q", i, id, result.Items[i].ObjectID)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestGetMonitoringConfiguration(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		configID      string
+		statusCode    int
+		response      MonitoringConfiguration
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful get",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "config-1",
+			statusCode:    200,
+			response:      MonitoringConfiguration{ObjectID: "config-1", Scope: "HOST-123"},
+		},
+		{
+			name:          "config not found",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "nonexistent",
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+		{
+			name:          "access denied",
+			extensionName: "com.dynatrace.extension.restricted",
+			configID:      "config-1",
+			statusCode:    403,
+			expectError:   true,
+			errorContains: "access denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/monitoring-configurations/" + tt.configID
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if r.Method != http.MethodGet {
+					t.Errorf("unexpected method: %s (expected GET)", r.Method)
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.GetMonitoringConfiguration(tt.extensionName, tt.configID)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.ObjectID != tt.response.ObjectID {
+				t.Errorf("expected objectId %q, got %q", tt.response.ObjectID, result.ObjectID)
+			}
+			if result.Scope != tt.response.Scope {
+				t.Errorf("expected scope %q, got %q", tt.response.Scope, result.Scope)
+			}
+			// Verify enrichment fields
+			if result.Type != "extension_monitoring_config" {
+				t.Errorf("expected type %q, got %q", "extension_monitoring_config", result.Type)
+			}
+			if result.ExtensionName != tt.extensionName {
+				t.Errorf("expected extensionName %q, got %q", tt.extensionName, result.ExtensionName)
+			}
+		})
+	}
+}
+
+func TestCreateMonitoringConfiguration(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		body          MonitoringConfigurationCreate
+		statusCode    int
+		response      MonitoringConfiguration
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful create",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			body: MonitoringConfigurationCreate{
+				Scope: "HOST-123",
+				Value: map[string]any{"enabled": true, "description": "test"},
+			},
+			statusCode: 200,
+			response:   MonitoringConfiguration{ObjectID: "new-config-1", Scope: "HOST-123"},
+		},
+		{
+			name:          "extension not found",
+			extensionName: "com.dynatrace.extension.nonexistent",
+			body: MonitoringConfigurationCreate{
+				Value: map[string]any{"enabled": true},
+			},
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+		{
+			name:          "access denied",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			body: MonitoringConfigurationCreate{
+				Value: map[string]any{"enabled": true},
+			},
+			statusCode:    403,
+			expectError:   true,
+			errorContains: "access denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/monitoring-configurations"
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if r.Method != http.MethodPost {
+					t.Errorf("unexpected method: %s (expected POST)", r.Method)
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.CreateMonitoringConfiguration(tt.extensionName, tt.body)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.ObjectID != tt.response.ObjectID {
+				t.Errorf("expected objectId %q, got %q", tt.response.ObjectID, result.ObjectID)
+			}
+		})
+	}
+}
+
+func TestUpdateMonitoringConfiguration(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		configID      string
+		body          MonitoringConfigurationCreate
+		statusCode    int
+		response      MonitoringConfiguration
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful update",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "config-1",
+			body: MonitoringConfigurationCreate{
+				Scope: "HOST-123",
+				Value: map[string]any{"enabled": false, "description": "updated"},
+			},
+			statusCode: 200,
+			response:   MonitoringConfiguration{ObjectID: "config-1", Scope: "HOST-123"},
+		},
+		{
+			name:          "config not found",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "nonexistent",
+			body: MonitoringConfigurationCreate{
+				Value: map[string]any{"enabled": true},
+			},
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+		{
+			name:          "access denied",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "config-1",
+			body: MonitoringConfigurationCreate{
+				Value: map[string]any{"enabled": true},
+			},
+			statusCode:    403,
+			expectError:   true,
+			errorContains: "access denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/monitoring-configurations/" + tt.configID
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if r.Method != http.MethodPut {
+					t.Errorf("unexpected method: %s (expected PUT)", r.Method)
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == 200 {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			result, err := handler.UpdateMonitoringConfiguration(tt.extensionName, tt.configID, tt.body)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.ObjectID != tt.response.ObjectID {
+				t.Errorf("expected objectId %q, got %q", tt.response.ObjectID, result.ObjectID)
+			}
+		})
+	}
+}
+
+func TestDeleteMonitoringConfiguration(t *testing.T) {
+	tests := []struct {
+		name          string
+		extensionName string
+		configID      string
+		statusCode    int
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "successful delete",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "config-1",
+			statusCode:    204,
+		},
+		{
+			name:          "config not found",
+			extensionName: "com.dynatrace.extension.host-monitoring",
+			configID:      "nonexistent",
+			statusCode:    404,
+			expectError:   true,
+			errorContains: "not found",
+		},
+		{
+			name:          "access denied",
+			extensionName: "com.dynatrace.extension.restricted",
+			configID:      "config-1",
+			statusCode:    403,
+			expectError:   true,
+			errorContains: "access denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/platform/extensions/v2/extensions/" + tt.extensionName + "/monitoring-configurations/" + tt.configID
+				if r.URL.Path != expectedPath {
+					t.Errorf("unexpected path: %s (expected %s)", r.URL.Path, expectedPath)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if r.Method != http.MethodDelete {
+					t.Errorf("unexpected method: %s (expected DELETE)", r.Method)
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+
+				w.WriteHeader(tt.statusCode)
+			}))
+			defer server.Close()
+
+			c, err := client.New(server.URL, "test-token")
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
+
+			handler := NewHandler(c)
+			err = handler.DeleteMonitoringConfiguration(tt.extensionName, tt.configID)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestMonitoringConfiguration_MarshalYAML(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   MonitoringConfiguration
+		contains []string
+		excludes []string
+	}{
+		{
+			name: "structured value serialized as YAML map",
+			config: MonitoringConfiguration{
+				Type:          "extension_monitoring_config",
+				ExtensionName: "com.dynatrace.extension.host-monitoring",
+				ObjectID:      "test-id-001",
+				Scope:         "environment",
+				Value:         json.RawMessage(`{"enabled":true,"description":"test config","version":"1.0.0"}`),
+			},
+			contains: []string{
+				"extensionName: com.dynatrace.extension.host-monitoring",
+				"objectId: test-id-001",
+				"scope: environment",
+				"enabled: true",
+				"description: test config",
+				"version: 1.0.0",
+			},
+			// Must NOT contain byte array representation
+			excludes: []string{
+				"- 123",
+				"- 34",
+			},
+		},
+		{
+			name: "empty value omitted",
+			config: MonitoringConfiguration{
+				ExtensionName: "com.dynatrace.extension.jmx",
+				ObjectID:      "test-id-002",
+				Scope:         "HOST-ABC",
+			},
+			contains: []string{
+				"objectId: test-id-002",
+				"scope: HOST-ABC",
+			},
+			excludes: []string{
+				"value:",
+			},
+		},
+		{
+			name: "nested value preserved",
+			config: MonitoringConfiguration{
+				ObjectID: "test-id-003",
+				Value:    json.RawMessage(`{"endpoints":[{"host":"example.invalid","port":5432}]}`),
+			},
+			contains: []string{
+				"objectId: test-id-003",
+				"host: example.invalid",
+				"port: 5432",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.config.MarshalYAML()
+			if err != nil {
+				t.Fatalf("MarshalYAML() unexpected error: %v", err)
+			}
+			if result == nil {
+				t.Fatal("MarshalYAML() returned nil")
+			}
+
+			// Marshal the result to YAML string for content checks
+			yamlBytes, err := yaml.Marshal(result)
+			if err != nil {
+				t.Fatalf("failed to marshal YAML result: %v", err)
+			}
+			yamlStr := string(yamlBytes)
+
+			for _, want := range tt.contains {
+				if !strings.Contains(yamlStr, want) {
+					t.Errorf("YAML output missing expected content %q\ngot:\n%s", want, yamlStr)
+				}
+			}
+			for _, exclude := range tt.excludes {
+				if strings.Contains(yamlStr, exclude) {
+					t.Errorf("YAML output should not contain %q\ngot:\n%s", exclude, yamlStr)
+				}
+			}
+		})
+	}
+}
