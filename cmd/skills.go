@@ -19,7 +19,8 @@ var skillsCmd = &cobra.Command{
 	Long: `Manage dtctl skill files for AI coding assistants.
 
 Skill files teach your AI assistant how to use dtctl effectively.
-Supported agents: claude, copilot, cursor, kiro, opencode, openclaw.`,
+Follows the agentskills.io open standard for skill installation.
+Supported agents: claude, copilot, cursor, junie, kiro, opencode, openclaw.`,
 	Example: `  # Auto-detect agent and install skill file
   dtctl skills install
 
@@ -61,7 +62,11 @@ func requireSkillsSubcommand(cmd *cobra.Command, args []string) error {
 var skillsInstallCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install skill file for an AI coding assistant",
-	Long: `Install a dtctl skill file for the specified AI coding assistant.
+	Long: `Install the dtctl skill directory for the specified AI coding assistant.
+
+Skills are installed as directories following the agentskills.io standard:
+  <agent-config>/skills/dtctl/SKILL.md     (main skill document)
+  <agent-config>/skills/dtctl/references/   (reference files loaded on demand)
 
 If no agent is specified with --for, the command auto-detects the current
 agent from environment variables. Use --global to install to the user-wide
@@ -74,10 +79,10 @@ Examples:
   # Install for Claude Code
   dtctl skills install --for claude
 
-  # Install globally (Claude Code only)
+  # Install globally
   dtctl skills install --for claude --global
 
-  # Overwrite existing file
+  # Overwrite existing installation
   dtctl skills install --for claude --force
 
   # List supported agents
@@ -92,7 +97,7 @@ var skillsUninstallCmd = &cobra.Command{
 	Long: `Remove dtctl skill files installed for an AI coding assistant.
 
 If no agent is specified with --for, the command auto-detects the current
-agent. Removes skill files from both project-local and global locations.
+agent. Removes skill directories from both project-local and global locations.
 
 Examples:
   # Auto-detect and uninstall
@@ -137,7 +142,7 @@ func init() {
 	skillsCmd.AddCommand(skillsStatusCmd)
 
 	// Flags for install
-	skillsInstallCmd.Flags().String("for", "", "install for a specific agent (claude, copilot, cursor, kiro, opencode, openclaw)")
+	skillsInstallCmd.Flags().String("for", "", "install for a specific agent (claude, copilot, cursor, junie, kiro, opencode, openclaw)")
 	skillsInstallCmd.Flags().Bool("global", false, "install to user-wide location instead of project directory")
 	skillsInstallCmd.Flags().Bool("force", false, "overwrite existing files without prompting")
 	skillsInstallCmd.Flags().Bool("list", false, "list all supported agents")
@@ -234,9 +239,9 @@ func runSkillsInstall(cmd *cobra.Command, _ []string) error {
 	}
 
 	if result.Replaced {
-		output.PrintSuccess("Updated %s skill file: %s", result.Agent.DisplayName, result.Path)
+		output.PrintSuccess("Updated %s skill: %s", result.Agent.DisplayName, result.Path)
 	} else {
-		output.PrintSuccess("Installed %s skill file: %s", result.Agent.DisplayName, result.Path)
+		output.PrintSuccess("Installed %s skill: %s", result.Agent.DisplayName, result.Path)
 	}
 	output.PrintInfo("Scope: %s", scope)
 

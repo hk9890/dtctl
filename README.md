@@ -56,7 +56,7 @@ cp -r skills/dtctl ~/.claude/skills/                       # For Claude Code
 cp -r skills/dtctl ~/.openclaw/workspace/skills/dtctl/     # For OpenClaw
 ```
 
-Compatible with GitHub Copilot, Claude Code, Cursor, Kiro, OpenCode, OpenClaw, and other Agent Skills-compatible tools.
+Compatible with GitHub Copilot, Claude Code, Cursor, Kiro, Junie, OpenCode, OpenClaw, and other [Agent Skills](https://agentskills.io)-compatible tools.
 
 ## Quick Start
 

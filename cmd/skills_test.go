@@ -34,7 +34,7 @@ func resetSkillsFlags(t *testing.T) {
 func clearAgentEnvVars(t *testing.T) {
 	t.Helper()
 	for _, env := range []string{
-		"CLAUDECODE", "CURSOR_AGENT", "GITHUB_COPILOT", "KIRO", "OPENCODE", "OPENCLAW",
+		"CLAUDECODE", "CURSOR_AGENT", "GITHUB_COPILOT", "JUNIE", "KIRO", "OPENCODE", "OPENCLAW",
 		"CODEIUM_AGENT", "TABNINE_AGENT", "AMAZON_Q", "AI_AGENT",
 	} {
 		t.Setenv(env, "")
@@ -160,7 +160,7 @@ func TestStatusToAgentEntry_Installed(t *testing.T) {
 	result := &skills.StatusResult{
 		Agent:     agent,
 		Installed: true,
-		Path:      "/tmp/project/.claude/commands/dtctl.md",
+		Path:      "/tmp/project/.claude/skills/dtctl",
 		Global:    false,
 	}
 
@@ -171,7 +171,7 @@ func TestStatusToAgentEntry_Installed(t *testing.T) {
 	if !entry.Installed {
 		t.Error("expected Installed=true")
 	}
-	if entry.Path != "/tmp/project/.claude/commands/dtctl.md" {
+	if entry.Path != "/tmp/project/.claude/skills/dtctl" {
 		t.Errorf("Path = %q, unexpected", entry.Path)
 	}
 	if entry.Scope != "project" {
@@ -184,7 +184,7 @@ func TestStatusToAgentEntry_InstalledGlobal(t *testing.T) {
 	result := &skills.StatusResult{
 		Agent:     agent,
 		Installed: true,
-		Path:      "/home/user/.claude/commands/dtctl.md",
+		Path:      "/home/user/.claude/skills/dtctl",
 		Global:    true,
 	}
 
@@ -239,14 +239,20 @@ func TestSkillsInstall_RunE(t *testing.T) {
 		t.Fatalf("RunE error: %v", err)
 	}
 
-	// Verify file was created
-	expectedPath := filepath.Join(tmpDir, ".claude", "commands", "dtctl.md")
+	// Verify SKILL.md was created in the skill directory
+	expectedPath := filepath.Join(tmpDir, ".claude", "skills", "dtctl", "SKILL.md")
 	data, err := os.ReadFile(expectedPath)
 	if err != nil {
-		t.Fatalf("skill file not created: %v", err)
+		t.Fatalf("SKILL.md not created: %v", err)
 	}
 	if !strings.Contains(string(data), "dtctl") {
-		t.Error("skill file should contain 'dtctl'")
+		t.Error("SKILL.md should contain 'dtctl'")
+	}
+
+	// Verify references/ directory exists
+	refsDir := filepath.Join(tmpDir, ".claude", "skills", "dtctl", "references")
+	if info, err := os.Stat(refsDir); err != nil || !info.IsDir() {
+		t.Error("references/ directory should exist")
 	}
 }
 
@@ -272,9 +278,9 @@ func TestSkillsInstall_AllAgents(t *testing.T) {
 			}
 
 			agent, _ := skills.FindAgent(agentName)
-			expectedPath := filepath.Join(tmpDir, agent.ProjectPath)
-			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-				t.Errorf("skill file not found at %s", expectedPath)
+			skillFile := filepath.Join(tmpDir, agent.ProjectPath, "SKILL.md")
+			if _, err := os.Stat(skillFile); os.IsNotExist(err) {
+				t.Errorf("SKILL.md not found at %s", skillFile)
 			}
 		})
 	}
@@ -359,7 +365,7 @@ func TestSkillsInstall_GlobalUnsupported(t *testing.T) {
 	_ = os.Chdir(tmpDir)
 
 	resetSkillsFlags(t)
-	_ = skillsInstallCmd.Flags().Set("for", "copilot")
+	_ = skillsInstallCmd.Flags().Set("for", "cursor")
 	_ = skillsInstallCmd.Flags().Set("global", "true")
 
 	err := skillsInstallCmd.RunE(skillsInstallCmd, []string{})
@@ -392,9 +398,9 @@ func TestSkillsInstall_AutoDetect(t *testing.T) {
 		t.Fatalf("RunE error: %v", err)
 	}
 
-	expectedPath := filepath.Join(tmpDir, ".opencode", "commands", "dtctl.md")
+	expectedPath := filepath.Join(tmpDir, ".opencode", "skills", "dtctl", "SKILL.md")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-		t.Errorf("skill file not found at %s", expectedPath)
+		t.Errorf("SKILL.md not found at %s", expectedPath)
 	}
 }
 
@@ -435,9 +441,10 @@ func TestSkillsUninstall_RunE(t *testing.T) {
 	}
 
 	agent, _ := skills.FindAgent("claude")
-	expectedPath := filepath.Join(tmpDir, agent.ProjectPath)
-	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-		t.Fatal("skill file should exist before uninstall")
+	skillDir := filepath.Join(tmpDir, agent.ProjectPath)
+	skillFile := filepath.Join(skillDir, "SKILL.md")
+	if _, err := os.Stat(skillFile); os.IsNotExist(err) {
+		t.Fatal("SKILL.md should exist before uninstall")
 	}
 
 	// Uninstall
@@ -447,8 +454,9 @@ func TestSkillsUninstall_RunE(t *testing.T) {
 		t.Fatalf("uninstall error: %v", err)
 	}
 
-	if _, err := os.Stat(expectedPath); !os.IsNotExist(err) {
-		t.Error("skill file should not exist after uninstall")
+	// Verify the entire skill directory is gone
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
+		t.Error("skill directory should not exist after uninstall")
 	}
 }
 
@@ -557,11 +565,11 @@ func TestSkillsInstall_AgentMode(t *testing.T) {
 		t.Fatalf("RunE error: %v", err)
 	}
 
-	// Verify file was also created on disk
+	// Verify SKILL.md was also created on disk
 	agent, _ := skills.FindAgent("claude")
-	expectedPath := filepath.Join(tmpDir, agent.ProjectPath)
+	expectedPath := filepath.Join(tmpDir, agent.ProjectPath, "SKILL.md")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
-		t.Errorf("skill file not created in agent mode")
+		t.Errorf("SKILL.md not created in agent mode")
 	}
 }
 
@@ -737,7 +745,7 @@ func TestSkillsInstallAgentResult_JSON(t *testing.T) {
 	result := skillsInstallAgentResult{
 		Action: "installed",
 		Agent:  "claude",
-		Path:   "/tmp/project/.claude/commands/dtctl.md",
+		Path:   "/tmp/project/.claude/skills/dtctl",
 		Scope:  "project",
 	}
 
@@ -766,7 +774,7 @@ func TestSkillsInstallAgentResult_UpdatedAction(t *testing.T) {
 	result := skillsInstallAgentResult{
 		Action: "updated",
 		Agent:  "cursor",
-		Path:   "/tmp/.cursor/rules/dtctl.mdc",
+		Path:   "/tmp/.cursor/skills/dtctl",
 		Scope:  "project",
 	}
 
@@ -785,7 +793,7 @@ func TestSkillsInstallAgentResult_UpdatedAction(t *testing.T) {
 func TestSkillsUninstallAgentResult_JSON(t *testing.T) {
 	result := skillsUninstallAgentResult{
 		Agent:   "copilot",
-		Removed: []string{"/tmp/.github/instructions/dtctl.instructions.md"},
+		Removed: []string{"/tmp/.github/skills/dtctl"},
 	}
 
 	data, err := json.Marshal(result)
@@ -816,7 +824,7 @@ func TestSkillsStatusAgentEntry_JSON(t *testing.T) {
 			entry: skillsStatusAgentEntry{
 				Agent:     "claude",
 				Installed: true,
-				Path:      "/tmp/.claude/commands/dtctl.md",
+				Path:      "/tmp/.claude/skills/dtctl",
 				Scope:     "project",
 			},
 			wantPath:  true,
@@ -860,7 +868,7 @@ func TestSkillsListAgentEntry_JSON(t *testing.T) {
 	entry := skillsListAgentEntry{
 		Name:           "claude",
 		DisplayName:    "Claude Code",
-		ProjectPath:    ".claude/commands/dtctl.md",
+		ProjectPath:    ".claude/skills/dtctl",
 		SupportsGlobal: true,
 	}
 

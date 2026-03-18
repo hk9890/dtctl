@@ -3577,6 +3577,7 @@ The detection is automatic and doesn't affect functionality. Supported AI agents
 - GitHub Copilot (`GITHUB_COPILOT` env var)
 - Cursor (`CURSOR_AGENT` env var)
 - Kiro (`KIRO` env var)
+- Junie (`JUNIE` env var)
 - OpenClaw (`OPENCLAW` env var)
 - Codeium (`CODEIUM_AGENT` env var)
 - TabNine (`TABNINE_AGENT` env var)

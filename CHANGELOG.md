@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Skills: migrate to agentskills.io standard** — `dtctl skills install` now copies the full skill directory (`SKILL.md` + `references/`) using the [agentskills.io](https://agentskills.io) open standard path (`<client>/skills/dtctl/`) instead of agent-specific file formats; YAML frontmatter and relative links are preserved verbatim; added Junie agent support and global install paths for Copilot, Junie, and OpenCode
+
 ## [0.18.0] - 2026-03-18
 
 ### Added

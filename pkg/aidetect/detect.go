@@ -19,6 +19,7 @@ var knownAgents = map[string]string{
 	"CODEIUM_AGENT":  "codeium",
 	"TABNINE_AGENT":  "tabnine",
 	"AMAZON_Q":       "amazon-q",
+	"JUNIE":          "junie",
 	"KIRO":           "kiro",
 	"OPENCODE":       "opencode",
 	"OPENCLAW":       "openclaw",
