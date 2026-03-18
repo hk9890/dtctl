@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
 )
+
+// uuidRegex matches standard UUID format (8-4-4-4-12 hex digits)
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // TablePrinter prints output as a table
 type TablePrinter struct {
@@ -146,6 +150,53 @@ func configureKubectlStyle(table *tablewriter.Table) {
 	table.SetNoWhiteSpace(true)
 }
 
+// setBoldHeaders applies bold styling to all table headers when color is enabled.
+func setBoldHeaders(table *tablewriter.Table, count int) {
+	if !ColorEnabled() || count == 0 {
+		return
+	}
+	colors := make([]tablewriter.Colors, count)
+	for i := range colors {
+		colors[i] = tablewriter.Colors{tablewriter.Bold}
+	}
+	table.SetHeaderColor(colors...)
+}
+
+// statusColors maps known status/state values to ANSI color codes for semantic coloring.
+var statusColors = map[string]string{
+	// Green: positive/success states
+	"true": Green, "active": Green, "SUCCEEDED": Green, "SUCCESS": Green,
+	"healthy": Green, "enabled": Green, "COMPLETED": Green, "deployed": Green,
+
+	// Red: negative/failure states
+	"false": Red, "FAILED": Red, "ERROR": Red, "disabled": Red,
+	"inactive": Red, "CRITICAL": Red,
+
+	// Yellow: in-progress/warning states
+	"WARNING": Yellow, "WARN": Yellow, "PENDING": Yellow,
+	"RUNNING": Yellow, "IN_PROGRESS": Yellow, "WAITING": Yellow,
+}
+
+// colorizeTableValue applies semantic coloring to a table cell value.
+// It dims UUIDs and colors known status values.
+func colorizeTableValue(value string) string {
+	if !ColorEnabled() {
+		return value
+	}
+
+	// Dim UUIDs — they're noise in most table contexts
+	if uuidRegex.MatchString(value) {
+		return Colorize(Dim, value)
+	}
+
+	// Color known status values
+	if color, ok := statusColors[value]; ok {
+		return Colorize(color, value)
+	}
+
+	return value
+}
+
 // Print prints a single object as a table
 func (p *TablePrinter) Print(obj interface{}) error {
 	table := tablewriter.NewWriter(p.writer)
@@ -173,10 +224,11 @@ func (p *TablePrinter) Print(obj interface{}) error {
 	for _, f := range fields {
 		headers = append(headers, f.name)
 		value := getFieldByPath(v, f.indices)
-		values = append(values, formatValue(value))
+		values = append(values, colorizeTableValue(formatValue(value)))
 	}
 
 	table.SetHeader(headers)
+	setBoldHeaders(table, len(headers))
 	table.Append(values)
 	table.Render()
 
@@ -198,7 +250,7 @@ func (p *TablePrinter) PrintList(obj interface{}) error {
 	}
 
 	if v.Len() == 0 {
-		fmt.Fprintln(p.writer, "No resources found.")
+		fmt.Fprintln(p.writer, Colorize(Dim, "No resources found."))
 		return nil
 	}
 
@@ -237,6 +289,7 @@ func (p *TablePrinter) PrintList(obj interface{}) error {
 	}
 
 	table.SetHeader(headers)
+	setBoldHeaders(table, len(headers))
 
 	// Add rows
 	for i := 0; i < v.Len(); i++ {
@@ -255,7 +308,7 @@ func (p *TablePrinter) PrintList(obj interface{}) error {
 		var row []string
 		for _, f := range fields {
 			value := getFieldByPath(elem, f.indices)
-			row = append(row, formatValue(value))
+			row = append(row, colorizeTableValue(formatValue(value)))
 		}
 		table.Append(row)
 	}
@@ -345,13 +398,14 @@ func (p *TablePrinter) printMaps(v reflect.Value, table *tablewriter.Table) erro
 		headers = append(headers, strings.ToUpper(k))
 	}
 	table.SetHeader(headers)
+	setBoldHeaders(table, len(headers))
 
 	// Add rows
 	for _, row := range rows {
 		var values []string
 		for _, key := range keys {
 			val := row[key]
-			values = append(values, formatTableMapValue(val))
+			values = append(values, colorizeTableValue(formatTableMapValue(val)))
 		}
 		table.Append(values)
 	}

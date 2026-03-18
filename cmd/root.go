@@ -92,7 +92,7 @@ func Execute() {
 			os.Exit(exitCodeForError(err))
 		}
 
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s %s\n", output.Colorize(output.Bold+output.Red, "Error:"), err)
 		os.Exit(exitCodeForError(err))
 	}
 }

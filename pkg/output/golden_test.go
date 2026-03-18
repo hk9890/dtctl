@@ -696,6 +696,58 @@ func TestGolden_DescribeBucket(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Golden tests: describe format (vertical key-value layout)
+// ---------------------------------------------------------------------------
+
+func TestGolden_DescribeWorkflow_Describe(t *testing.T) {
+	// Disable color for deterministic golden output
+	ResetColorCache()
+	SetPlainMode(true)
+	defer ResetColorCache()
+
+	wf := workflowFixtures()[0]
+
+	var buf bytes.Buffer
+	printer := NewPrinterWithWriter("describe", &buf)
+	if err := printer.Print(wf); err != nil {
+		t.Fatalf("Print failed: %v", err)
+	}
+	assertGolden(t, "describe/workflow-describe", buf.String())
+}
+
+func TestGolden_DescribeBucket_Describe(t *testing.T) {
+	// Disable color for deterministic golden output
+	ResetColorCache()
+	SetPlainMode(true)
+	defer ResetColorCache()
+
+	b := bucketFixtures()[0]
+
+	var buf bytes.Buffer
+	printer := NewPrinterWithWriter("describe", &buf)
+	if err := printer.Print(b); err != nil {
+		t.Fatalf("Print failed: %v", err)
+	}
+	assertGolden(t, "describe/bucket-describe", buf.String())
+}
+
+func TestGolden_DescribeSLO_Describe(t *testing.T) {
+	// Disable color for deterministic golden output
+	ResetColorCache()
+	SetPlainMode(true)
+	defer ResetColorCache()
+
+	s := sloFixtures()[0]
+
+	var buf bytes.Buffer
+	printer := NewPrinterWithWriter("describe", &buf)
+	if err := printer.Print(s); err != nil {
+		t.Fatalf("Print failed: %v", err)
+	}
+	assertGolden(t, "describe/slo-describe", buf.String())
+}
+
+// ---------------------------------------------------------------------------
 // Golden tests: DQL query results (map-based records)
 // ---------------------------------------------------------------------------
 
