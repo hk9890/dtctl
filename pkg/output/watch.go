@@ -79,13 +79,13 @@ func (p *WatchPrinter) PrintChanges(changes []Change) error {
 		switch change.Type {
 		case ChangeTypeAdded:
 			prefix = "+"
-			color = Green
+			color = BrightGreen
 		case ChangeTypeModified:
 			prefix = "~"
-			color = Yellow
+			color = BrightYellow
 		case ChangeTypeDeleted:
 			prefix = "-"
-			color = Red
+			color = BrightRed
 		default:
 			prefix = " "
 			color = ""
@@ -112,11 +112,11 @@ func (p *WatchPrinter) printTableWithPrefixes(changes []Change, tablePrinter *Ta
 func (p *WatchPrinter) getPrefixAndColor(changeType ChangeType) (string, string) {
 	switch changeType {
 	case ChangeTypeAdded:
-		return "+", Green
+		return "+", BrightGreen
 	case ChangeTypeModified:
-		return "~", Yellow
+		return "~", BrightYellow
 	case ChangeTypeDeleted:
-		return "-", Red
+		return "-", BrightRed
 	default:
 		return " ", ""
 	}

@@ -455,11 +455,11 @@ func TestColorizeTableValue_WithColor(t *testing.T) {
 		value string
 		color string
 	}{
-		{"active", Green},
-		{"FAILED", Red},
-		{"RUNNING", Yellow},
-		{"true", Green},
-		{"false", Red},
+		{"active", BrightGreen},
+		{"FAILED", BrightRed},
+		{"RUNNING", BrightYellow},
+		{"true", BrightGreen},
+		{"false", BrightRed},
 	}
 
 	for _, tc := range statusTests {

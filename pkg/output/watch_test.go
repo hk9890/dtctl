@@ -221,19 +221,19 @@ func TestWatchPrinter_GetPrefixAndColor(t *testing.T) {
 			name:       "added",
 			changeType: ChangeTypeAdded,
 			wantPrefix: "+",
-			wantColor:  Green,
+			wantColor:  BrightGreen,
 		},
 		{
 			name:       "modified",
 			changeType: ChangeTypeModified,
 			wantPrefix: "~",
-			wantColor:  Yellow,
+			wantColor:  BrightYellow,
 		},
 		{
 			name:       "deleted",
 			changeType: ChangeTypeDeleted,
 			wantPrefix: "-",
-			wantColor:  Red,
+			wantColor:  BrightRed,
 		},
 		{
 			name:       "unknown",
@@ -312,7 +312,7 @@ func TestWatchPrinter_PrintTableRow_NonStruct(t *testing.T) {
 	watchPrinter := NewWatchPrinterWithWriter(basePrinter, buf, false)
 
 	// Test with non-struct resource (should fallback to simple format)
-	err := watchPrinter.printTableRow("simple-string", "+", Green, basePrinter.(*TablePrinter))
+	err := watchPrinter.printTableRow("simple-string", "+", BrightGreen, basePrinter.(*TablePrinter))
 	if err != nil {
 		t.Errorf("printTableRow() with non-struct error = %v", err)
 	}
@@ -348,7 +348,7 @@ func TestWatchPrinter_PrintChanges_WithColorize(t *testing.T) {
 
 	output := buf.String()
 	// When colorize is enabled, output should contain ANSI color codes
-	if !strings.Contains(output, Green) && !strings.Contains(output, "+") {
+	if !strings.Contains(output, BrightGreen) && !strings.Contains(output, "+") {
 		t.Errorf("PrintChanges() with colorize should include color codes or prefix, got %q", output)
 	}
 }

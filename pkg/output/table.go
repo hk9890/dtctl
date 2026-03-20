@@ -141,7 +141,7 @@ func getFieldByPath(v reflect.Value, indices []int) reflect.Value {
 // configureKubectlStyle configures the tablewriter to match kubectl's output style
 func configureKubectlStyle(table *tablewriter.Table) {
 	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
+	table.SetAutoFormatHeaders(false) // We format headers ourselves in formatHeaders()
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetCenterSeparator("")
@@ -153,31 +153,45 @@ func configureKubectlStyle(table *tablewriter.Table) {
 	table.SetNoWhiteSpace(true)
 }
 
-// setBoldHeaders applies bold styling to all table headers when color is enabled.
-func setBoldHeaders(table *tablewriter.Table, count int) {
-	if !ColorEnabled() || count == 0 {
-		return
+// formatHeaders formats header strings for display using tablewriter.Title()
+// (replaces underscores/dots with spaces and uppercases), then optionally wraps
+// each header in ANSI bold when color is enabled.
+//
+// We handle formatting ourselves instead of using SetAutoFormatHeaders(true) +
+// SetHeaderColor() because the tablewriter library (v0.0.5) has a bug in its
+// printHeading() function: when ANSI escape sequences are present (is_esc_seq)
+// AND noWhiteSpace is true, it inserts an extra space between the padded header
+// and the column separator, causing headers to misalign with data rows. By
+// pre-applying ANSI codes to the header strings directly, the library never
+// enters its is_esc_seq code path, and alignment stays correct.
+func formatHeaders(headers []string) []string {
+	formatted := make([]string, len(headers))
+	bold := ColorEnabled()
+	for i, h := range headers {
+		h = tablewriter.Title(h)
+		if bold {
+			h = Colorize(Bold, h)
+		}
+		formatted[i] = h
 	}
-	colors := make([]tablewriter.Colors, count)
-	for i := range colors {
-		colors[i] = tablewriter.Colors{tablewriter.Bold}
-	}
-	table.SetHeaderColor(colors...)
+	return formatted
 }
 
 // statusColors maps known status/state values to ANSI color codes for semantic coloring.
+// Uses bright (high-intensity) variants for a softer, more readable appearance
+// inspired by OpenCode's color scheme (#7fd88f green, #e06c75 red).
 var statusColors = map[string]string{
 	// Green: positive/success states
-	"true": Green, "active": Green, "SUCCEEDED": Green, "SUCCESS": Green,
-	"healthy": Green, "enabled": Green, "COMPLETED": Green, "deployed": Green,
+	"true": BrightGreen, "active": BrightGreen, "SUCCEEDED": BrightGreen, "SUCCESS": BrightGreen,
+	"healthy": BrightGreen, "enabled": BrightGreen, "COMPLETED": BrightGreen, "deployed": BrightGreen,
 
 	// Red: negative/failure states
-	"false": Red, "FAILED": Red, "ERROR": Red, "disabled": Red,
-	"inactive": Red, "CRITICAL": Red,
+	"false": BrightRed, "FAILED": BrightRed, "ERROR": BrightRed, "disabled": BrightRed,
+	"inactive": BrightRed, "CRITICAL": BrightRed,
 
 	// Yellow: in-progress/warning states
-	"WARNING": Yellow, "WARN": Yellow, "PENDING": Yellow,
-	"RUNNING": Yellow, "IN_PROGRESS": Yellow, "WAITING": Yellow,
+	"WARNING": BrightYellow, "WARN": BrightYellow, "PENDING": BrightYellow,
+	"RUNNING": BrightYellow, "IN_PROGRESS": BrightYellow, "WAITING": BrightYellow,
 }
 
 // colorizeTableValue applies semantic coloring to a table cell value.
@@ -230,8 +244,7 @@ func (p *TablePrinter) Print(obj interface{}) error {
 		values = append(values, colorizeTableValue(formatValue(value)))
 	}
 
-	table.SetHeader(headers)
-	setBoldHeaders(table, len(headers))
+	table.SetHeader(formatHeaders(headers))
 	table.Append(values)
 	table.Render()
 
@@ -291,8 +304,7 @@ func (p *TablePrinter) PrintList(obj interface{}) error {
 		headers = append(headers, f.name)
 	}
 
-	table.SetHeader(headers)
-	setBoldHeaders(table, len(headers))
+	table.SetHeader(formatHeaders(headers))
 
 	// Add rows
 	for i := 0; i < v.Len(); i++ {
@@ -395,13 +407,12 @@ func (p *TablePrinter) printMaps(v reflect.Value, table *tablewriter.Table) erro
 	}
 	sort.Strings(keys)
 
-	// Convert keys to uppercase for headers (kubectl style)
+	// Convert keys to headers (kubectl style: uppercase, bold)
 	var headers []string
 	for _, k := range keys {
-		headers = append(headers, strings.ToUpper(k))
+		headers = append(headers, k)
 	}
-	table.SetHeader(headers)
-	setBoldHeaders(table, len(headers))
+	table.SetHeader(formatHeaders(headers))
 
 	// Add rows
 	for _, row := range rows {
