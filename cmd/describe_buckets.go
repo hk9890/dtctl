@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/bucket"
 )
 
@@ -42,21 +41,22 @@ Examples:
 		}
 
 		// Print bucket details
-		fmt.Printf("Name:           %s\n", b.BucketName)
-		fmt.Printf("Display Name:   %s\n", b.DisplayName)
-		fmt.Printf("Table:          %s\n", b.Table)
-		fmt.Printf("Status:         %s\n", b.Status)
-		fmt.Printf("Retention:      %d days\n", b.RetentionDays)
-		fmt.Printf("Updatable:      %v\n", b.Updatable)
-		fmt.Printf("Version:        %d\n", b.Version)
+		const w = 16
+		output.DescribeKV("Name:", w, "%s", b.BucketName)
+		output.DescribeKV("Display Name:", w, "%s", b.DisplayName)
+		output.DescribeKV("Table:", w, "%s", b.Table)
+		output.DescribeKV("Status:", w, "%s", b.Status)
+		output.DescribeKV("Retention:", w, "%d days", b.RetentionDays)
+		output.DescribeKV("Updatable:", w, "%v", b.Updatable)
+		output.DescribeKV("Version:", w, "%d", b.Version)
 		if b.MetricInterval != "" {
-			fmt.Printf("Metric Interval: %s\n", b.MetricInterval)
+			output.DescribeKV("Metric Interval:", w, "%s", b.MetricInterval)
 		}
 		if b.Records != nil {
-			fmt.Printf("Records:        %d\n", *b.Records)
+			output.DescribeKV("Records:", w, "%d", *b.Records)
 		}
 		if b.EstimatedUncompressedBytes != nil {
-			fmt.Printf("Est. Size:      %s\n", formatBytes(*b.EstimatedUncompressedBytes))
+			output.DescribeKV("Est. Size:", w, "%s", formatBytes(*b.EstimatedUncompressedBytes))
 		}
 
 		return nil

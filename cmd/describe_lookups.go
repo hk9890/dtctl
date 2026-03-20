@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/lookup"
 )
 
@@ -65,33 +66,34 @@ Examples:
 		}
 
 		// Print lookup details
-		fmt.Printf("Path:         %s\n", lu.Path)
+		const w = 14
+		output.DescribeKV("Path:", w, "%s", lu.Path)
 		if lu.DisplayName != "" {
-			fmt.Printf("Display Name: %s\n", lu.DisplayName)
+			output.DescribeKV("Display Name:", w, "%s", lu.DisplayName)
 		}
 		if lu.Description != "" {
-			fmt.Printf("Description:  %s\n", lu.Description)
+			output.DescribeKV("Description:", w, "%s", lu.Description)
 		}
 		if lu.FileSize > 0 {
-			fmt.Printf("File Size:    %s\n", formatBytes(lu.FileSize))
+			output.DescribeKV("File Size:", w, "%s", formatBytes(lu.FileSize))
 		}
 		if lu.Records > 0 {
-			fmt.Printf("Records:      %d\n", lu.Records)
+			output.DescribeKV("Records:", w, "%d", lu.Records)
 		}
 		if lu.LookupField != "" {
-			fmt.Printf("Lookup Field: %s\n", lu.LookupField)
+			output.DescribeKV("Lookup Field:", w, "%s", lu.LookupField)
 		}
 		if len(lu.Columns) > 0 {
-			fmt.Printf("Columns:      %s\n", strings.Join(lu.Columns, ", "))
+			output.DescribeKV("Columns:", w, "%s", strings.Join(lu.Columns, ", "))
 		}
 		if lu.Modified != "" {
-			fmt.Printf("Modified:     %s\n", lu.Modified)
+			output.DescribeKV("Modified:", w, "%s", lu.Modified)
 		}
 
 		// Print data preview
 		if len(dataResult.Records) > 0 {
 			fmt.Println()
-			fmt.Printf("Data Preview (first %d rows):\n", len(dataResult.Records))
+			output.DescribeSection(fmt.Sprintf("Data Preview (first %d rows):", len(dataResult.Records)))
 
 			// Create table header
 			if len(lu.Columns) > 0 {

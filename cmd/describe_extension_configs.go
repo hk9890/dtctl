@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/extension"
 )
 
@@ -49,27 +50,28 @@ Examples:
 
 		// For table output, show detailed human-readable information
 		if outputFormat == "" || outputFormat == "table" {
-			fmt.Printf("Extension:  %s\n", extensionName)
-			fmt.Printf("Config ID:  %s\n", config.ObjectID)
+			const w = 13
+			output.DescribeKV("Extension:", w, "%s", extensionName)
+			output.DescribeKV("Config ID:", w, "%s", config.ObjectID)
 			if config.Scope != "" {
-				fmt.Printf("Scope:      %s\n", config.Scope)
+				output.DescribeKV("Scope:", w, "%s", config.Scope)
 			}
 
 			if len(config.Value) > 0 {
 				var val map[string]interface{}
 				if err := json.Unmarshal(config.Value, &val); err == nil {
 					if enabled, ok := val["enabled"]; ok {
-						fmt.Printf("Enabled:    %v\n", enabled)
+						output.DescribeKV("Enabled:", w, "%v", enabled)
 					}
 					if desc, ok := val["description"]; ok && desc != "" {
-						fmt.Printf("Description: %s\n", desc)
+						output.DescribeKV("Description:", w, "%s", desc)
 					}
 					if version, ok := val["version"]; ok && version != "" {
-						fmt.Printf("Version:    %s\n", version)
+						output.DescribeKV("Version:", w, "%s", version)
 					}
 					if fs, ok := val["featureSets"].([]interface{}); ok && len(fs) > 0 {
 						fmt.Println()
-						fmt.Println("Feature Sets:")
+						output.DescribeSection("Feature Sets:")
 						for _, f := range fs {
 							fmt.Printf("  - %v\n", f)
 						}
@@ -77,7 +79,7 @@ Examples:
 				}
 
 				fmt.Println()
-				fmt.Println("Value:")
+				output.DescribeSection("Value:")
 				valueJSON, err := json.MarshalIndent(json.RawMessage(config.Value), "  ", "  ")
 				if err == nil {
 					fmt.Printf("  %s\n", string(valueJSON))

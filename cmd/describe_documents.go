@@ -1,14 +1,37 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/resolver"
 )
+
+// printDocumentDetails prints common document metadata using bold labels.
+func printDocumentDetails(metadata *document.DocumentMetadata) {
+	const w = 13
+	output.DescribeKV("ID:", w, "%s", metadata.ID)
+	output.DescribeKV("Name:", w, "%s", metadata.Name)
+	output.DescribeKV("Type:", w, "%s", metadata.Type)
+	if metadata.Description != "" {
+		output.DescribeKV("Description:", w, "%s", metadata.Description)
+	}
+	output.DescribeKV("Version:", w, "%d", metadata.Version)
+	output.DescribeKV("Owner:", w, "%s", metadata.Owner)
+	output.DescribeKV("Private:", w, "%v", metadata.IsPrivate)
+	output.DescribeKV("Created:", w, "%s (by %s)",
+		metadata.ModificationInfo.CreatedTime.Format("2006-01-02 15:04:05"),
+		metadata.ModificationInfo.CreatedBy)
+	output.DescribeKV("Modified:", w, "%s (by %s)",
+		metadata.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"),
+		metadata.ModificationInfo.LastModifiedBy)
+	if len(metadata.Access) > 0 {
+		output.DescribeKV("Access:", w, "%s", strings.Join(metadata.Access, ", "))
+	}
+}
 
 // describeDashboardCmd shows detailed info about a dashboard
 var describeDashboardCmd = &cobra.Command{
@@ -54,25 +77,7 @@ Examples:
 			return err
 		}
 
-		// Print detailed information
-		fmt.Printf("ID:          %s\n", metadata.ID)
-		fmt.Printf("Name:        %s\n", metadata.Name)
-		fmt.Printf("Type:        %s\n", metadata.Type)
-		if metadata.Description != "" {
-			fmt.Printf("Description: %s\n", metadata.Description)
-		}
-		fmt.Printf("Version:     %d\n", metadata.Version)
-		fmt.Printf("Owner:       %s\n", metadata.Owner)
-		fmt.Printf("Private:     %v\n", metadata.IsPrivate)
-		fmt.Printf("Created:     %s (by %s)\n",
-			metadata.ModificationInfo.CreatedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.CreatedBy)
-		fmt.Printf("Modified:    %s (by %s)\n",
-			metadata.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.LastModifiedBy)
-		if len(metadata.Access) > 0 {
-			fmt.Printf("Access:      %s\n", strings.Join(metadata.Access, ", "))
-		}
+		printDocumentDetails(metadata)
 
 		return nil
 	},
@@ -122,25 +127,7 @@ Examples:
 			return err
 		}
 
-		// Print detailed information
-		fmt.Printf("ID:          %s\n", metadata.ID)
-		fmt.Printf("Name:        %s\n", metadata.Name)
-		fmt.Printf("Type:        %s\n", metadata.Type)
-		if metadata.Description != "" {
-			fmt.Printf("Description: %s\n", metadata.Description)
-		}
-		fmt.Printf("Version:     %d\n", metadata.Version)
-		fmt.Printf("Owner:       %s\n", metadata.Owner)
-		fmt.Printf("Private:     %v\n", metadata.IsPrivate)
-		fmt.Printf("Created:     %s (by %s)\n",
-			metadata.ModificationInfo.CreatedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.CreatedBy)
-		fmt.Printf("Modified:    %s (by %s)\n",
-			metadata.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.LastModifiedBy)
-		if len(metadata.Access) > 0 {
-			fmt.Printf("Access:      %s\n", strings.Join(metadata.Access, ", "))
-		}
+		printDocumentDetails(metadata)
 
 		return nil
 	},
@@ -191,25 +178,7 @@ Examples:
 			return err
 		}
 
-		// Print detailed information
-		fmt.Printf("ID:          %s\n", metadata.ID)
-		fmt.Printf("Name:        %s\n", metadata.Name)
-		fmt.Printf("Type:        %s\n", metadata.Type)
-		if metadata.Description != "" {
-			fmt.Printf("Description: %s\n", metadata.Description)
-		}
-		fmt.Printf("Version:     %d\n", metadata.Version)
-		fmt.Printf("Owner:       %s\n", metadata.Owner)
-		fmt.Printf("Private:     %v\n", metadata.IsPrivate)
-		fmt.Printf("Created:     %s (by %s)\n",
-			metadata.ModificationInfo.CreatedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.CreatedBy)
-		fmt.Printf("Modified:    %s (by %s)\n",
-			metadata.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"),
-			metadata.ModificationInfo.LastModifiedBy)
-		if len(metadata.Access) > 0 {
-			fmt.Printf("Access:      %s\n", strings.Join(metadata.Access, ", "))
-		}
+		printDocumentDetails(metadata)
 
 		return nil
 	},
@@ -248,20 +217,21 @@ Examples:
 		}
 
 		// Print detailed information
-		fmt.Printf("ID:                 %s\n", doc.ID)
-		fmt.Printf("Name:               %s\n", doc.Name)
-		fmt.Printf("Type:               %s\n", doc.Type)
-		fmt.Printf("Version:            %d\n", doc.Version)
-		fmt.Printf("Owner:              %s\n", doc.Owner)
-		fmt.Printf("Deleted By:         %s\n", doc.DeletedBy)
-		fmt.Printf("Deleted At:         %s\n", doc.DeletedAt.Format("2006-01-02 15:04:05"))
+		const w = 18
+		output.DescribeKV("ID:", w, "%s", doc.ID)
+		output.DescribeKV("Name:", w, "%s", doc.Name)
+		output.DescribeKV("Type:", w, "%s", doc.Type)
+		output.DescribeKV("Version:", w, "%d", doc.Version)
+		output.DescribeKV("Owner:", w, "%s", doc.Owner)
+		output.DescribeKV("Deleted By:", w, "%s", doc.DeletedBy)
+		output.DescribeKV("Deleted At:", w, "%s", doc.DeletedAt.Format("2006-01-02 15:04:05"))
 
 		// Show modification info if available
 		if !doc.ModificationInfo.LastModifiedTime.IsZero() {
-			fmt.Printf("Last Modified:      %s\n", doc.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"))
+			output.DescribeKV("Last Modified:", w, "%s", doc.ModificationInfo.LastModifiedTime.Format("2006-01-02 15:04:05"))
 		}
 		if doc.ModificationInfo.LastModifiedBy != "" {
-			fmt.Printf("Last Modified By:   %s\n", doc.ModificationInfo.LastModifiedBy)
+			output.DescribeKV("Last Modified By:", w, "%s", doc.ModificationInfo.LastModifiedBy)
 		}
 
 		return nil

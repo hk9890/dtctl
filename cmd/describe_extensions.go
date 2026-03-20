@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/extension"
 )
 
@@ -129,28 +130,29 @@ Examples:
 
 		// For table output, show detailed human-readable information
 		if outputFormat == "" || outputFormat == "table" {
-			fmt.Printf("Name:           %s\n", details.ExtensionName)
-			fmt.Printf("Version:        %s\n", details.Version)
+			const w = 16
+			output.DescribeKV("Name:", w, "%s", details.ExtensionName)
+			output.DescribeKV("Version:", w, "%s", details.Version)
 
 			if details.Author.Name != "" {
-				fmt.Printf("Author:         %s\n", details.Author.Name)
+				output.DescribeKV("Author:", w, "%s", details.Author.Name)
 			}
 			if details.MinDynatraceVersion != "" {
-				fmt.Printf("Min Dynatrace:  %s\n", details.MinDynatraceVersion)
+				output.DescribeKV("Min Dynatrace:", w, "%s", details.MinDynatraceVersion)
 			}
 			if details.MinEECVersion != "" {
-				fmt.Printf("Min EEC:        %s\n", details.MinEECVersion)
+				output.DescribeKV("Min EEC:", w, "%s", details.MinEECVersion)
 			}
 			if details.FileHash != "" {
-				fmt.Printf("File Hash:      %s\n", details.FileHash)
+				output.DescribeKV("File Hash:", w, "%s", details.FileHash)
 			}
 			if len(details.DataSources) > 0 {
 				fmt.Println()
-				fmt.Printf("Data Sources:   %s\n", strings.Join(details.DataSources, ", "))
+				output.DescribeKV("Data Sources:", w, "%s", strings.Join(details.DataSources, ", "))
 			}
 			if len(details.FeatureSets) > 0 {
 				fmt.Println()
-				fmt.Println("Feature Sets:")
+				output.DescribeSection("Feature Sets:")
 				for _, fs := range details.FeatureSets {
 					fmt.Printf("  - %s\n", fs)
 					if detail, ok := details.FeatureSetDetails[fs]; ok && len(detail.Metrics) > 0 {
@@ -162,7 +164,7 @@ Examples:
 			}
 			if len(details.Variables) > 0 {
 				fmt.Println()
-				fmt.Println("Variables:")
+				output.DescribeSection("Variables:")
 				for _, v := range details.Variables {
 					displayName := v.Name
 					if v.DisplayName != "" {
@@ -172,11 +174,11 @@ Examples:
 				}
 			}
 			if activeVersion != "" {
-				fmt.Printf("Active Version: %s\n", activeVersion)
+				output.DescribeKV("Active Version:", w, "%s", activeVersion)
 			}
 			if len(versions.Items) > 0 {
 				fmt.Println()
-				fmt.Println("Available Versions:")
+				output.DescribeSection("Available Versions:")
 				for _, v := range versions.Items {
 					marker := "  "
 					if activeVersion == v.Version {
@@ -187,7 +189,7 @@ Examples:
 			}
 			if len(configSummaries) > 0 {
 				fmt.Println()
-				fmt.Printf("Monitoring Configurations: %d\n", len(configSummaries))
+				output.DescribeSection(fmt.Sprintf("Monitoring Configurations: %d", len(configSummaries)))
 				for _, cfg := range configSummaries {
 					scope := cfg.Scope
 					if scope == "" {

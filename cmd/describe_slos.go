@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/settings"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/slo"
 )
@@ -45,38 +46,39 @@ Examples:
 		}
 
 		// Print SLO details
-		fmt.Printf("ID:          %s\n", s.ID)
+		const w = 13
+		output.DescribeKV("ID:", w, "%s", s.ID)
 
 		// Try to decode the object ID to show the UID
 		if decoded, err := settings.DecodeObjectID(s.ID); err == nil && decoded.UID != "" {
-			fmt.Printf("UID:         %s\n", decoded.UID)
+			output.DescribeKV("UID:", w, "%s", decoded.UID)
 		}
 
-		fmt.Printf("Name:        %s\n", s.Name)
+		output.DescribeKV("Name:", w, "%s", s.Name)
 		if s.Description != "" {
-			fmt.Printf("Description: %s\n", s.Description)
+			output.DescribeKV("Description:", w, "%s", s.Description)
 		}
 		if s.Version != "" {
 			// Try to decode the version to show the modification timestamp
 			if decodedVersion, err := settings.DecodeVersion(s.Version); err == nil {
 				if decodedVersion.Timestamp != nil {
-					fmt.Printf("Modified:    %s\n", decodedVersion.Timestamp.Format("2006-01-02 15:04:05 UTC"))
+					output.DescribeKV("Modified:", w, "%s", decodedVersion.Timestamp.Format("2006-01-02 15:04:05 UTC"))
 				}
 			}
 		}
 		if s.ExternalID != "" {
-			fmt.Printf("External ID: %s\n", s.ExternalID)
+			output.DescribeKV("External ID:", w, "%s", s.ExternalID)
 		}
 
 		// Print tags
 		if len(s.Tags) > 0 {
-			fmt.Printf("Tags:        %s\n", strings.Join(s.Tags, ", "))
+			output.DescribeKV("Tags:", w, "%s", strings.Join(s.Tags, ", "))
 		}
 
 		// Print criteria
 		if len(s.Criteria) > 0 {
 			fmt.Println()
-			fmt.Println("Criteria:")
+			output.DescribeSection("Criteria:")
 			for _, c := range s.Criteria {
 				timeframe := c.TimeframeFrom
 				if c.TimeframeTo != "" {
@@ -93,7 +95,7 @@ Examples:
 		// Print custom SLI if present
 		if len(s.CustomSli) > 0 {
 			fmt.Println()
-			fmt.Println("Custom SLI:")
+			output.DescribeSection("Custom SLI:")
 			sliJSON, err := json.MarshalIndent(s.CustomSli, "  ", "  ")
 			if err == nil {
 				fmt.Printf("  %s\n", string(sliJSON))

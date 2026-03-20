@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/settings"
 )
 
@@ -54,51 +55,52 @@ Examples:
 		}
 
 		// Print settings object details
-		fmt.Printf("Object ID:    %s\n", obj.ObjectID)
+		const w = 14
+		output.DescribeKV("Object ID:", w, "%s", obj.ObjectID)
 		if obj.UID != "" {
-			fmt.Printf("UID:          %s\n", obj.UID)
+			output.DescribeKV("UID:", w, "%s", obj.UID)
 		}
-		fmt.Printf("Schema ID:    %s\n", obj.SchemaID)
+		output.DescribeKV("Schema ID:", w, "%s", obj.SchemaID)
 		if obj.SchemaVersion != "" {
-			fmt.Printf("Version:      %s\n", obj.SchemaVersion)
+			output.DescribeKV("Version:", w, "%s", obj.SchemaVersion)
 		}
-		fmt.Printf("Scope:        %s\n", obj.Scope)
+		output.DescribeKV("Scope:", w, "%s", obj.Scope)
 		if obj.ScopeType != "" {
-			fmt.Printf("Scope Type:   %s\n", obj.ScopeType)
+			output.DescribeKV("Scope Type:", w, "%s", obj.ScopeType)
 		}
 		if obj.ScopeID != "" {
-			fmt.Printf("Scope ID:     %s\n", obj.ScopeID)
+			output.DescribeKV("Scope ID:", w, "%s", obj.ScopeID)
 		}
 		if obj.ExternalID != "" {
-			fmt.Printf("External ID:  %s\n", obj.ExternalID)
+			output.DescribeKV("External ID:", w, "%s", obj.ExternalID)
 		}
 		if obj.Summary != "" {
-			fmt.Printf("Summary:      %s\n", obj.Summary)
+			output.DescribeKV("Summary:", w, "%s", obj.Summary)
 		}
 
 		// Print modification info
 		if obj.ModificationInfo != nil {
 			fmt.Println()
 			if obj.ModificationInfo.CreatedTime != "" {
-				fmt.Printf("Created:      %s", obj.ModificationInfo.CreatedTime)
+				suffix := ""
 				if obj.ModificationInfo.CreatedBy != "" {
-					fmt.Printf(" (by %s)", obj.ModificationInfo.CreatedBy)
+					suffix = fmt.Sprintf(" (by %s)", obj.ModificationInfo.CreatedBy)
 				}
-				fmt.Println()
+				output.DescribeKV("Created:", w, "%s%s", obj.ModificationInfo.CreatedTime, suffix)
 			}
 			if obj.ModificationInfo.LastModifiedTime != "" {
-				fmt.Printf("Modified:     %s", obj.ModificationInfo.LastModifiedTime)
+				suffix := ""
 				if obj.ModificationInfo.LastModifiedBy != "" {
-					fmt.Printf(" (by %s)", obj.ModificationInfo.LastModifiedBy)
+					suffix = fmt.Sprintf(" (by %s)", obj.ModificationInfo.LastModifiedBy)
 				}
-				fmt.Println()
+				output.DescribeKV("Modified:", w, "%s%s", obj.ModificationInfo.LastModifiedTime, suffix)
 			}
 		}
 
 		// Print value as JSON
 		if len(obj.Value) > 0 {
 			fmt.Println()
-			fmt.Println("Value:")
+			output.DescribeSection("Value:")
 			valueJSON, err := json.MarshalIndent(obj.Value, "  ", "  ")
 			if err == nil {
 				fmt.Printf("  %s\n", string(valueJSON))
@@ -143,35 +145,36 @@ Examples:
 		}
 
 		// Extract and print key schema information
+		const w = 18
 		if schemaID, ok := schema["schemaId"].(string); ok {
-			fmt.Printf("Schema ID:        %s\n", schemaID)
+			output.DescribeKV("Schema ID:", w, "%s", schemaID)
 		}
 		if displayName, ok := schema["displayName"].(string); ok {
-			fmt.Printf("Display Name:     %s\n", displayName)
+			output.DescribeKV("Display Name:", w, "%s", displayName)
 		}
 		if description, ok := schema["description"].(string); ok && description != "" {
-			fmt.Printf("Description:      %s\n", description)
+			output.DescribeKV("Description:", w, "%s", description)
 		}
 		if version, ok := schema["version"].(string); ok {
-			fmt.Printf("Version:          %s\n", version)
+			output.DescribeKV("Version:", w, "%s", version)
 		}
 		if multiObj, ok := schema["multiObject"].(bool); ok {
-			fmt.Printf("Multi-Object:     %v\n", multiObj)
+			output.DescribeKV("Multi-Object:", w, "%v", multiObj)
 		}
 		if ordered, ok := schema["ordered"].(bool); ok {
-			fmt.Printf("Ordered:          %v\n", ordered)
+			output.DescribeKV("Ordered:", w, "%v", ordered)
 		}
 
 		// Print properties if available
 		if properties, ok := schema["properties"].(map[string]any); ok && len(properties) > 0 {
 			fmt.Println()
-			fmt.Printf("Properties:       %d defined\n", len(properties))
+			output.DescribeKV("Properties:", w, "%d defined", len(properties))
 		}
 
 		// Print scopes if available
 		if scopesRaw, ok := schema["scopes"].([]any); ok && len(scopesRaw) > 0 {
 			fmt.Println()
-			fmt.Println("Scopes:")
+			output.DescribeSection("Scopes:")
 			for _, s := range scopesRaw {
 				if scope, ok := s.(string); ok {
 					fmt.Printf("  - %s\n", scope)

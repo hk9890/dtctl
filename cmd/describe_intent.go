@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/appengine"
 )
 
@@ -51,16 +52,18 @@ Examples:
 
 		// For table output, show detailed information
 		if outputFormat == "table" {
-			fmt.Printf("Intent:       %s\n", intent.IntentID)
-			fmt.Printf("Full Name:    %s\n", intent.FullName)
+			const w = 14
+			output.DescribeKV("Intent:", w, "%s", intent.IntentID)
+			output.DescribeKV("Full Name:", w, "%s", intent.FullName)
 			if intent.Description != "" {
-				fmt.Printf("Description:  %s\n", intent.Description)
+				output.DescribeKV("Description:", w, "%s", intent.Description)
 			}
-			fmt.Printf("App:          %s (%s)\n", intent.AppName, intent.AppID)
+			output.DescribeKV("App:", w, "%s (%s)", intent.AppName, intent.AppID)
 
 			// Print properties
 			if len(intent.Properties) > 0 {
-				fmt.Printf("\nProperties:\n")
+				fmt.Println()
+				output.DescribeSection("Properties:")
 				for propName, prop := range intent.Properties {
 					required := ""
 					if prop.Required {
@@ -78,11 +81,13 @@ Examples:
 
 			// Show required properties summary
 			if len(intent.RequiredProps) > 0 {
-				fmt.Printf("\nRequired:     %s\n", strings.Join(intent.RequiredProps, ", "))
+				fmt.Println()
+				output.DescribeKV("Required:", w, "%s", strings.Join(intent.RequiredProps, ", "))
 			}
 
 			// Show usage example
-			fmt.Printf("\nUsage:\n")
+			fmt.Println()
+			output.DescribeSection("Usage:")
 			fmt.Printf("  dtctl open intent %s --data <key>=<value>\n", intent.FullName)
 			fmt.Printf("  dtctl find intents --data <key>=<value>\n")
 

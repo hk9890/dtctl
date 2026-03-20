@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/appengine"
 )
 
@@ -42,25 +42,26 @@ Examples:
 		}
 
 		// Print app details
-		fmt.Printf("ID:          %s\n", app.ID)
-		fmt.Printf("Name:        %s\n", app.Name)
-		fmt.Printf("Version:     %s\n", app.Version)
-		fmt.Printf("Description: %s\n", app.Description)
-		fmt.Printf("Builtin:     %v\n", app.IsBuiltin)
+		const w = 13
+		output.DescribeKV("ID:", w, "%s", app.ID)
+		output.DescribeKV("Name:", w, "%s", app.Name)
+		output.DescribeKV("Version:", w, "%s", app.Version)
+		output.DescribeKV("Description:", w, "%s", app.Description)
+		output.DescribeKV("Builtin:", w, "%v", app.IsBuiltin)
 
 		if app.ResourceStatus != nil {
-			fmt.Printf("Status:      %s\n", app.ResourceStatus.Status)
+			output.DescribeKV("Status:", w, "%s", app.ResourceStatus.Status)
 			if len(app.ResourceStatus.SubResourceTypes) > 0 {
-				fmt.Printf("Resources:   %s\n", strings.Join(app.ResourceStatus.SubResourceTypes, ", "))
+				output.DescribeKV("Resources:", w, "%s", strings.Join(app.ResourceStatus.SubResourceTypes, ", "))
 			}
 		}
 
 		if app.ModificationInfo != nil {
 			if app.ModificationInfo.CreatedTime != "" {
-				fmt.Printf("Created:     %s (by %s)\n", app.ModificationInfo.CreatedTime, app.ModificationInfo.CreatedBy)
+				output.DescribeKV("Created:", w, "%s (by %s)", app.ModificationInfo.CreatedTime, app.ModificationInfo.CreatedBy)
 			}
 			if app.ModificationInfo.LastModifiedTime != "" {
-				fmt.Printf("Modified:    %s (by %s)\n", app.ModificationInfo.LastModifiedTime, app.ModificationInfo.LastModifiedBy)
+				output.DescribeKV("Modified:", w, "%s (by %s)", app.ModificationInfo.LastModifiedTime, app.ModificationInfo.LastModifiedBy)
 			}
 		}
 

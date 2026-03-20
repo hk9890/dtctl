@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/edgeconnect"
 )
 
@@ -42,29 +43,31 @@ Examples:
 		}
 
 		// Print EdgeConnect details
-		fmt.Printf("ID:       %s\n", ec.ID)
-		fmt.Printf("Name:     %s\n", ec.Name)
-		fmt.Printf("Managed:  %v\n", ec.ManagedByDynatraceOperator)
+		const w = 10
+		output.DescribeKV("ID:", w, "%s", ec.ID)
+		output.DescribeKV("Name:", w, "%s", ec.Name)
+		output.DescribeKV("Managed:", w, "%v", ec.ManagedByDynatraceOperator)
 
 		if len(ec.HostPatterns) > 0 {
 			fmt.Println()
-			fmt.Println("Host Patterns:")
+			output.DescribeSection("Host Patterns:")
 			for _, pattern := range ec.HostPatterns {
 				fmt.Printf("  - %s\n", pattern)
 			}
 		}
 
 		if ec.OAuthClientID != "" {
-			fmt.Printf("\nOAuth Client ID: %s\n", ec.OAuthClientID)
+			fmt.Println()
+			output.DescribeKV("OAuth Client ID:", 0, "%s", ec.OAuthClientID)
 		}
 
 		if ec.ModificationInfo != nil {
 			fmt.Println()
 			if ec.ModificationInfo.CreatedTime != "" {
-				fmt.Printf("Created:  %s (by %s)\n", ec.ModificationInfo.CreatedTime, ec.ModificationInfo.CreatedBy)
+				output.DescribeKV("Created:", w, "%s (by %s)", ec.ModificationInfo.CreatedTime, ec.ModificationInfo.CreatedBy)
 			}
 			if ec.ModificationInfo.LastModifiedTime != "" {
-				fmt.Printf("Modified: %s (by %s)\n", ec.ModificationInfo.LastModifiedTime, ec.ModificationInfo.LastModifiedBy)
+				output.DescribeKV("Modified:", w, "%s (by %s)", ec.ModificationInfo.LastModifiedTime, ec.ModificationInfo.LastModifiedBy)
 			}
 		}
 

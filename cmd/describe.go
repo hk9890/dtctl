@@ -9,6 +9,7 @@ import (
 
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/azureconnection"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/azuremonitoringconfig"
 )
@@ -145,20 +146,21 @@ var describeAzureConnectionCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("ID:   %s\n", item.ObjectID)
-		fmt.Printf("Name: %s\n", item.Value.Name)
-		fmt.Printf("Type: %s\n", item.Value.Type)
+		const w = 6
+		output.DescribeKV("ID:", w, "%s", item.ObjectID)
+		output.DescribeKV("Name:", w, "%s", item.Value.Name)
+		output.DescribeKV("Type:", w, "%s", item.Value.Type)
 
 		if item.Value.ClientSecret != nil {
-			fmt.Println("Client Secret Config:")
-			fmt.Printf("  Application ID: %s\n", item.Value.ClientSecret.ApplicationID)
-			fmt.Printf("  Directory ID:   %s\n", item.Value.ClientSecret.DirectoryID)
-			fmt.Printf("  Consumers:      %v\n", item.Value.ClientSecret.Consumers)
+			output.DescribeSection("Client Secret Config:")
+			output.DescribeKV("  Application ID:", 19, "%s", item.Value.ClientSecret.ApplicationID)
+			output.DescribeKV("  Directory ID:", 19, "%s", item.Value.ClientSecret.DirectoryID)
+			output.DescribeKV("  Consumers:", 19, "%v", item.Value.ClientSecret.Consumers)
 		}
 
 		if item.Value.FederatedIdentityCredential != nil {
-			fmt.Println("Federated Identity Config:")
-			fmt.Printf("  Consumers: %v\n", item.Value.FederatedIdentityCredential.Consumers)
+			output.DescribeSection("Federated Identity Config:")
+			output.DescribeKV("  Consumers:", 14, "%v", item.Value.FederatedIdentityCredential.Consumers)
 		}
 
 		return nil
@@ -197,22 +199,23 @@ var describeAzureMonitoringConfigCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("ID:          %s\n", item.ObjectID)
-		fmt.Printf("Description: %s\n", item.Value.Description)
-		fmt.Printf("Enabled:     %v\n", item.Value.Enabled)
-		fmt.Printf("Version:     %s\n", item.Value.Version)
-		fmt.Println("Azure Config:")
-		fmt.Printf("  Deployment Scope:            %s\n", item.Value.Azure.DeploymentScope)
-		fmt.Printf("  Subscription Filtering Mode: %s\n", item.Value.Azure.SubscriptionFilteringMode)
-		fmt.Printf("  Configuration Mode:          %s\n", item.Value.Azure.ConfigurationMode)
-		fmt.Printf("  Deployment Mode:             %s\n", item.Value.Azure.DeploymentMode)
+		const w = 13
+		output.DescribeKV("ID:", w, "%s", item.ObjectID)
+		output.DescribeKV("Description:", w, "%s", item.Value.Description)
+		output.DescribeKV("Enabled:", w, "%v", item.Value.Enabled)
+		output.DescribeKV("Version:", w, "%s", item.Value.Version)
+		output.DescribeSection("Azure Config:")
+		output.DescribeKV("  Deployment Scope:", 32, "%s", item.Value.Azure.DeploymentScope)
+		output.DescribeKV("  Subscription Filtering Mode:", 32, "%s", item.Value.Azure.SubscriptionFilteringMode)
+		output.DescribeKV("  Configuration Mode:", 32, "%s", item.Value.Azure.ConfigurationMode)
+		output.DescribeKV("  Deployment Mode:", 32, "%s", item.Value.Azure.DeploymentMode)
 
 		if len(item.Value.Azure.Credentials) > 0 {
-			fmt.Println("  Credentials:")
+			output.DescribeSection("  Credentials:")
 			for _, cred := range item.Value.Azure.Credentials {
-				fmt.Printf("    - Description:   %s\n", cred.Description)
-				fmt.Printf("      Connection ID: %s\n", cred.ConnectionId)
-				fmt.Printf("      Type:          %s\n", cred.Type)
+				output.DescribeKV("    - Description:", 21, "%s", cred.Description)
+				output.DescribeKV("      Connection ID:", 21, "%s", cred.ConnectionId)
+				output.DescribeKV("      Type:", 21, "%s", cred.Type)
 			}
 		}
 
@@ -236,7 +239,7 @@ func printAzureMonitoringConfigStatus(c *client.Client, configID string) {
 | limit 100`, configID)
 
 	fmt.Println()
-	fmt.Println("Status:")
+	output.DescribeSection("Status:")
 
 	smartscapeResult, err := executor.ExecuteQuery(smartscapeQuery)
 	if err != nil {
@@ -289,7 +292,7 @@ func printAzureMonitoringConfigStatus(c *client.Client, configID string) {
 	fmt.Printf("  Latest event status: %s\n", latestStatus)
 
 	fmt.Println()
-	fmt.Println("Recent events:")
+	output.DescribeSection("Recent events:")
 	fmt.Printf("%-35s  %s\n", "TIMESTAMP", "DA.CLOUDS.CONTENT")
 	for _, rec := range eventRecords {
 		timestamp := stringFromRecord(rec, "timestamp")

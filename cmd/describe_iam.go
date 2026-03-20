@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/iam"
 )
 
@@ -41,16 +42,17 @@ Examples:
 		}
 
 		// Print user details
-		fmt.Printf("UUID:        %s\n", user.UID)
-		fmt.Printf("Email:       %s\n", user.Email)
+		const w = 13
+		output.DescribeKV("UUID:", w, "%s", user.UID)
+		output.DescribeKV("Email:", w, "%s", user.Email)
 		if user.Name != "" {
-			fmt.Printf("Name:        %s\n", user.Name)
+			output.DescribeKV("Name:", w, "%s", user.Name)
 		}
 		if user.Surname != "" {
-			fmt.Printf("Surname:     %s\n", user.Surname)
+			output.DescribeKV("Surname:", w, "%s", user.Surname)
 		}
 		if user.Description != "" {
-			fmt.Printf("Description: %s\n", user.Description)
+			output.DescribeKV("Description:", w, "%s", user.Description)
 		}
 
 		return nil
@@ -98,9 +100,10 @@ Examples:
 		group := list.Results[0]
 
 		// Print group details
-		fmt.Printf("UUID:      %s\n", group.UUID)
-		fmt.Printf("Name:      %s\n", group.GroupName)
-		fmt.Printf("Type:      %s\n", group.Type)
+		const w = 11
+		output.DescribeKV("UUID:", w, "%s", group.UUID)
+		output.DescribeKV("Name:", w, "%s", group.GroupName)
+		output.DescribeKV("Type:", w, "%s", group.Type)
 
 		return nil
 	},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpconnection"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/gcpmonitoringconfig"
 )
@@ -34,13 +35,14 @@ var describeGCPConnectionCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("ID:   %s\n", item.ObjectID)
-		fmt.Printf("Name: %s\n", item.Value.Name)
-		fmt.Printf("Type: %s\n", item.Value.Type)
+		const w = 6
+		output.DescribeKV("ID:", w, "%s", item.ObjectID)
+		output.DescribeKV("Name:", w, "%s", item.Value.Name)
+		output.DescribeKV("Type:", w, "%s", item.Value.Type)
 		if item.Value.ServiceAccountImpersonation != nil {
-			fmt.Println("Service Account Impersonation:")
-			fmt.Printf("  Service Account ID: %s\n", item.Value.ServiceAccountImpersonation.ServiceAccountID)
-			fmt.Printf("  Consumers:          %v\n", item.Value.ServiceAccountImpersonation.Consumers)
+			output.DescribeSection("Service Account Impersonation:")
+			output.DescribeKV("  Service Account ID:", 23, "%s", item.Value.ServiceAccountImpersonation.ServiceAccountID)
+			output.DescribeKV("  Consumers:", 23, "%v", item.Value.ServiceAccountImpersonation.Consumers)
 		}
 
 		return nil
@@ -79,30 +81,31 @@ var describeGCPMonitoringConfigCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("ID:          %s\n", item.ObjectID)
-		fmt.Printf("Description: %s\n", item.Value.Description)
-		fmt.Printf("Enabled:     %v\n", item.Value.Enabled)
-		fmt.Printf("Version:     %s\n", item.Value.Version)
-		fmt.Println("Google Cloud Config:")
-		fmt.Printf("  Location Filtering: %v\n", item.Value.GoogleCloud.LocationFiltering)
-		fmt.Printf("  Project Filtering:  %v\n", item.Value.GoogleCloud.ProjectFiltering)
-		fmt.Printf("  Folder Filtering:   %v\n", item.Value.GoogleCloud.FolderFiltering)
-		fmt.Printf("  Feature Sets:       %v\n", item.Value.FeatureSets)
+		const w = 13
+		output.DescribeKV("ID:", w, "%s", item.ObjectID)
+		output.DescribeKV("Description:", w, "%s", item.Value.Description)
+		output.DescribeKV("Enabled:", w, "%v", item.Value.Enabled)
+		output.DescribeKV("Version:", w, "%s", item.Value.Version)
+		output.DescribeSection("Google Cloud Config:")
+		output.DescribeKV("  Location Filtering:", 23, "%v", item.Value.GoogleCloud.LocationFiltering)
+		output.DescribeKV("  Project Filtering:", 23, "%v", item.Value.GoogleCloud.ProjectFiltering)
+		output.DescribeKV("  Folder Filtering:", 23, "%v", item.Value.GoogleCloud.FolderFiltering)
+		output.DescribeKV("  Feature Sets:", 23, "%v", item.Value.FeatureSets)
 
 		if len(item.Value.GoogleCloud.Credentials) > 0 {
-			fmt.Println("  Credentials:")
+			output.DescribeSection("  Credentials:")
 			for _, cred := range item.Value.GoogleCloud.Credentials {
-				fmt.Printf("    - Description:     %s\n", cred.Description)
-				fmt.Printf("      Connection ID:   %s\n", cred.ConnectionID)
-				fmt.Printf("      Service Account: %s\n", cred.ServiceAccount)
+				output.DescribeKV("    - Description:", 23, "%s", cred.Description)
+				output.DescribeKV("      Connection ID:", 23, "%s", cred.ConnectionID)
+				output.DescribeKV("      Service Account:", 23, "%s", cred.ServiceAccount)
 			}
 		}
 
 		if principal, principalErr := connHandler.GetDynatracePrincipal(); principalErr == nil {
-			fmt.Println("Dynatrace:")
-			fmt.Printf("  Principal ID: %s\n", principal.ObjectID)
+			output.DescribeSection("Dynatrace:")
+			output.DescribeKV("  Principal ID:", 17, "%s", principal.ObjectID)
 			if principal.Principal != "" {
-				fmt.Printf("  Principal:    %s\n", principal.Principal)
+				output.DescribeKV("  Principal:", 17, "%s", principal.Principal)
 			}
 		}
 
@@ -126,7 +129,7 @@ func printGCPMonitoringConfigStatus(c *client.Client, configID string) {
 | limit 100`, configID)
 
 	fmt.Println()
-	fmt.Println("Status:")
+	output.DescribeSection("Status:")
 
 	smartscapeResult, err := executor.ExecuteQuery(smartscapeQuery)
 	if err != nil {
@@ -188,7 +191,7 @@ func printGCPMonitoringConfigStatus(c *client.Client, configID string) {
 	fmt.Printf("  Latest event status: %s\n", latestStatus)
 
 	fmt.Println()
-	fmt.Println("Recent events:")
+	output.DescribeSection("Recent events:")
 	fmt.Printf("%-35s  %s\n", "TIMESTAMP", "DA.CLOUDS.CONTENT")
 	for _, rec := range eventRecords {
 		timestamp := stringFromRecord(rec, "timestamp")

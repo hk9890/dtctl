@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/workflow"
 )
 
@@ -44,26 +45,27 @@ Examples:
 		}
 
 		// Print workflow details
-		fmt.Printf("ID:          %s\n", wf.ID)
-		fmt.Printf("Title:       %s\n", wf.Title)
+		const w = 13
+		output.DescribeKV("ID:", w, "%s", wf.ID)
+		output.DescribeKV("Title:", w, "%s", wf.Title)
 		if wf.Description != "" {
-			fmt.Printf("Description: %s\n", wf.Description)
+			output.DescribeKV("Description:", w, "%s", wf.Description)
 		}
-		fmt.Printf("Owner:       %s (%s)\n", wf.Owner, wf.OwnerType)
-		fmt.Printf("Private:     %v\n", wf.Private)
-		fmt.Printf("Deployed:    %v\n", wf.IsDeployed)
+		output.DescribeKV("Owner:", w, "%s (%s)", wf.Owner, wf.OwnerType)
+		output.DescribeKV("Private:", w, "%v", wf.Private)
+		output.DescribeKV("Deployed:", w, "%v", wf.IsDeployed)
 
 		// Print trigger info
 		if wf.Trigger != nil {
 			fmt.Println()
-			fmt.Println("Trigger:")
+			output.DescribeSection("Trigger:")
 			printTriggerInfo(wf.Trigger)
 		}
 
 		// Print tasks
 		if len(wf.Tasks) > 0 {
 			fmt.Println()
-			fmt.Println("Tasks:")
+			output.DescribeSection("Tasks:")
 			for name, task := range wf.Tasks {
 				taskMap, ok := task.(map[string]interface{})
 				if ok {
@@ -86,7 +88,7 @@ Examples:
 		execList, err := execHandler.List(workflowID)
 		if err == nil && execList.Count > 0 {
 			fmt.Println()
-			fmt.Println("Recent Executions:")
+			output.DescribeSection("Recent Executions:")
 
 			// Show up to 5 recent executions
 			limit := 5
@@ -153,24 +155,25 @@ Examples:
 		}
 
 		// Print execution details
-		fmt.Printf("ID:         %s\n", exec.ID)
-		fmt.Printf("Workflow:   %s\n", exec.Workflow)
-		fmt.Printf("Title:      %s\n", exec.Title)
-		fmt.Printf("State:      %s\n", exec.State)
-		fmt.Printf("Started:    %s\n", exec.StartedAt.Format("2006-01-02 15:04:05"))
+		const w = 12
+		output.DescribeKV("ID:", w, "%s", exec.ID)
+		output.DescribeKV("Workflow:", w, "%s", exec.Workflow)
+		output.DescribeKV("Title:", w, "%s", exec.Title)
+		output.DescribeKV("State:", w, "%s", exec.State)
+		output.DescribeKV("Started:", w, "%s", exec.StartedAt.Format("2006-01-02 15:04:05"))
 		if exec.EndedAt != nil {
-			fmt.Printf("Ended:      %s\n", exec.EndedAt.Format("2006-01-02 15:04:05"))
+			output.DescribeKV("Ended:", w, "%s", exec.EndedAt.Format("2006-01-02 15:04:05"))
 		}
-		fmt.Printf("Duration:   %s\n", formatDuration(exec.Runtime))
-		fmt.Printf("Trigger:    %s\n", exec.TriggerType)
+		output.DescribeKV("Duration:", w, "%s", formatDuration(exec.Runtime))
+		output.DescribeKV("Trigger:", w, "%s", exec.TriggerType)
 		if exec.StateInfo != nil && *exec.StateInfo != "" {
-			fmt.Printf("State Info: %s\n", *exec.StateInfo)
+			output.DescribeKV("State Info:", w, "%s", *exec.StateInfo)
 		}
 
 		// Print tasks table
 		if len(tasks) > 0 {
 			fmt.Println()
-			fmt.Println("Tasks:")
+			output.DescribeSection("Tasks:")
 
 			// Find max name length for alignment
 			maxNameLen := 4 // "NAME"

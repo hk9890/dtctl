@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dynatrace-oss/dtctl/pkg/output"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/appengine"
 )
 
@@ -50,20 +51,22 @@ Examples:
 
 		// For table output, show detailed information
 		if outputFormat == "table" {
-			fmt.Printf("Function:     %s\n", function.FunctionName)
-			fmt.Printf("Full Name:    %s\n", function.FullName)
+			const w = 14
+			output.DescribeKV("Function:", w, "%s", function.FunctionName)
+			output.DescribeKV("Full Name:", w, "%s", function.FullName)
 			if function.Title != "" {
-				fmt.Printf("Title:        %s\n", function.Title)
+				output.DescribeKV("Title:", w, "%s", function.Title)
 			}
 			if function.Description != "" {
-				fmt.Printf("Description:  %s\n", function.Description)
+				output.DescribeKV("Description:", w, "%s", function.Description)
 			}
-			fmt.Printf("App:          %s (%s)\n", function.AppName, function.AppID)
-			fmt.Printf("Resumable:    %t\n", function.Resumable)
+			output.DescribeKV("App:", w, "%s (%s)", function.AppName, function.AppID)
+			output.DescribeKV("Resumable:", w, "%t", function.Resumable)
 			if function.Stateful {
-				fmt.Printf("Stateful:     %t\n", function.Stateful)
+				output.DescribeKV("Stateful:", w, "%t", function.Stateful)
 			}
-			fmt.Printf("\nUsage:\n")
+			fmt.Println()
+			output.DescribeSection("Usage:")
 			fmt.Printf("  dtctl exec function %s\n", function.FullName)
 			if function.Resumable {
 				fmt.Printf("  dtctl exec function %s --defer  # For async execution\n", function.FullName)
