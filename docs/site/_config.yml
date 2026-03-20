@@ -1,0 +1,27 @@
+title: dtctl
+description: "Your Dynatrace platform, one command away."
+url: "https://dynatrace-oss.github.io"
+baseurl: "/dtctl"
+remote_theme: pages-themes/midnight@v0.2.0
+
+plugins:
+  - jekyll-remote-theme
+
+# Collections for documentation pages
+collections:
+  docs:
+    output: true
+    permalink: /docs/:title/
+
+defaults:
+  - scope:
+      path: "_docs"
+      type: "docs"
+    values:
+      layout: "docs"
+
+# Exclude dev files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
