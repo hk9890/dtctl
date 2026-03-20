@@ -120,7 +120,7 @@ make test
 | File | Purpose |
 |------|---------|
 | `pkg/output/golden_test.go` | Test cases — uses **real production structs** from `pkg/resources/*` |
-| `pkg/output/testdata/golden/` | Golden files (49 files across get/, describe/, query/, errors/, empty/) |
+| `pkg/output/testdata/golden/` | Golden files across get/, describe/, query/, errors/, empty/ |
 | `cmd/testutil/golden.go` | `AssertGolden` / `AssertGoldenStripped` helpers, `-update` flag |
 | `pkg/output/testdata/README.md` | Workflow documentation |
 

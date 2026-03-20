@@ -3096,22 +3096,6 @@ dtctl get workflows -o wide
 # Shows more details in table format
 ```
 
-### Describe Format
-
-Vertical key-value layout for single objects (similar to `kubectl describe`):
-
-```bash
-dtctl describe workflow wf-123 -o describe
-
-# Output:
-# Name     my-workflow
-# ID       a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
-# Status   active
-# Owner    team-sre
-```
-
-When used with list commands, `-o describe` falls back to table output. In `--plain` mode, it falls back to JSON for machine readability.
-
 ### CSV Format
 
 Spreadsheet-compatible comma-separated values output:

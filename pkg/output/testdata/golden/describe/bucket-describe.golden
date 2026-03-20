@@ -1,8 +1,0 @@
-Name             default_logs
-Table            logs
-Display Name     Default Logs
-Status           active
-Retention Days   35
-Interval         
-Updatable        true
-Records          1250000

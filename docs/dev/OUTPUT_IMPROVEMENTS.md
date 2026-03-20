@@ -92,7 +92,6 @@ Keys are **bold**, values are normal. Sub-objects render as indented YAML. The `
 ## Test Strategy
 
 - Golden tests in `pkg/output/` use `stripANSI()` before comparison, so color changes do not break existing golden files
-- New golden tests added for describe key-value format
 - Run `make test-update-golden` after changes, review diffs
 
 ## Files Changed
@@ -100,9 +99,7 @@ Keys are **bold**, values are normal. Sub-objects render as indented YAML. The `
 | File | Change |
 |------|--------|
 | `pkg/output/table.go` | Bold headers, status coloring, dim UUIDs, dim empty state |
-| `pkg/output/describe.go` | New describe key-value printer |
 | `pkg/output/messages.go` | New `PrintSuccess`/`PrintWarning` helpers |
-| `pkg/output/printer.go` | Add `"describe"` format routing |
+| `pkg/output/printer.go` | Format routing |
 | `cmd/root.go` | Colored error prefix |
-| `pkg/output/golden_test.go` | New describe golden tests |
 | Golden files | Updated via `-update` flag |

@@ -55,7 +55,7 @@ func NewPrinterWithOpts(opts PrinterOptions) Printer {
 	}
 
 	// In plain mode, force JSON output instead of human-readable formats for machine readability
-	if opts.PlainMode && (format == "table" || format == "wide" || format == "describe") {
+	if opts.PlainMode && (format == "table" || format == "wide") {
 		format = "json"
 	}
 
@@ -104,8 +104,6 @@ func NewPrinterWithOpts(opts PrinterOptions) Printer {
 		return NewBrailleChartPrinter(writer)
 	case "table", "wide":
 		return &TablePrinter{writer: writer, wide: format == "wide"}
-	case "describe":
-		return &DescribePrinter{writer: writer, wide: true}
 	default:
 		return &TablePrinter{writer: writer}
 	}

@@ -544,16 +544,9 @@ func TestTablePrinter_EmptyList_WithColor(t *testing.T) {
 }
 
 func TestNewPrinterWithOptions_PlainModeFallback(t *testing.T) {
-	// In plain mode, describe should fall back to JSON
-	printer := NewPrinterWithOptions("describe", nil, true)
+	// table should fall back to JSON in plain mode
+	printer := NewPrinterWithOptions("table", nil, true)
 	_, isJSON := printer.(*JSONPrinter)
-	if !isJSON {
-		t.Errorf("describe format in plain mode should produce JSONPrinter, got %T", printer)
-	}
-
-	// table should also fall back
-	printer = NewPrinterWithOptions("table", nil, true)
-	_, isJSON = printer.(*JSONPrinter)
 	if !isJSON {
 		t.Errorf("table format in plain mode should produce JSONPrinter, got %T", printer)
 	}
