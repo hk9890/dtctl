@@ -1777,7 +1777,7 @@ to JSON output with a warning. When more than 10 series are present, only the fi
 
 **Color**: Charts, sparklines, bar charts, and watch mode use ANSI colors when enabled. Color follows the [no-color.org](https://no-color.org/) standard — it is automatically disabled when piped, when `NO_COLOR` is set, or when `--plain` is used. Set `FORCE_COLOR=1` to override TTY detection.
 
-### Snapshot Decoding (Live Debugger Query Output)
+### Snapshot Decoding (Live Debugger Query Output) -- Experimental
 ```bash
 # Decode and simplify snapshot payloads (variant wrappers → plain values)
 dtctl query "fetch application.snapshots | sort timestamp desc | limit 5" --decode-snapshots
@@ -1798,7 +1798,9 @@ By default, `--decode-snapshots` simplifies variant wrappers to plain values (e.
 
 This flag is composable with any output format (`-o json`, `-o yaml`, `-o table`, `-o csv`, etc.), unlike the previous `-o snapshot` which was a standalone format locked to JSON output.
 
-## Live Debugger Command Pattern
+## Live Debugger Command Pattern (Experimental)
+
+> **Note:** Live Debugger support is experimental. The underlying APIs and query behavior may change in future releases.
 
 Live Debugger follows the standard verb-noun grammar and avoids introducing a separate command tree:
 

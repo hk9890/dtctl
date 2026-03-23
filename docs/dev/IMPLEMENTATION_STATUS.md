@@ -249,7 +249,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] JSON file support: `--data-file` flag
 - [x] Intent metadata: properties, required fields, descriptions
 
-### Live Debugger Features
+### Live Debugger Features (Experimental)
 - [x] Configure workspace filters: `dtctl update breakpoint --filters key:value[,key:value...]` (also supports `key=value`)
 - [x] Create breakpoint: `dtctl create breakpoint File.java:line`
 - [x] List breakpoints: `dtctl get breakpoints`

@@ -15,7 +15,7 @@ import (
 
 var getBreakpointsCmd = &cobra.Command{
 	Use:   "breakpoints",
-	Short: "List all breakpoints in the current workspace",
+	Short: "List all breakpoints in the current workspace (experimental)",
 	RunE:  runGetBreakpoints,
 }
 

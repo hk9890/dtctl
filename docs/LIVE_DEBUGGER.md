@@ -1,5 +1,7 @@
 # Live Debugger Guide
 
+> **Experimental:** Live Debugger support in `dtctl` is experimental. The underlying APIs and query behavior may change in future releases without notice.
+
 This guide explains how to use Dynatrace Live Debugger features from `dtctl`.
 
 ## Overview

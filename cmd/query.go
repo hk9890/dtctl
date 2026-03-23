@@ -372,7 +372,7 @@ analysisTimeframe,contributions`)
 	queryCmd.Flags().Lookup("metadata").NoOptDefVal = "all"
 
 	// Snapshot decode flag
-	queryCmd.Flags().String("decode-snapshots", "", `decode Live Debugger snapshot payloads in query results
+	queryCmd.Flags().String("decode-snapshots", "", `(experimental) decode Live Debugger snapshot payloads in query results
 bare --decode-snapshots simplifies variant wrappers to plain values;
 --decode-snapshots=full preserves the full decoded tree with type annotations`)
 	queryCmd.Flags().Lookup("decode-snapshots").NoOptDefVal = "simplified"

@@ -13,8 +13,11 @@ import (
 var createBreakpointCmd = &cobra.Command{
 	Use:     "breakpoint <filename:line>",
 	Aliases: []string{"breakpoints", "bp"},
-	Short:   "Create a Live Debugger breakpoint",
+	Short:   "Create a Live Debugger breakpoint (experimental)",
 	Long: `Create a Live Debugger breakpoint in the current workspace.
+
+Note: Live Debugger support is experimental. The underlying APIs and query
+behavior may change in future releases.
 
 Examples:
   # Create a breakpoint

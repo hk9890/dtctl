@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.15.0] - 2026-03-11
 
 ### Added
-- **Live Debugger CLI workflow**
+- **Live Debugger CLI workflow** (experimental -- underlying APIs and query behavior may change)
   - `dtctl update breakpoint --filters ...` for workspace filter configuration
   - `dtctl create breakpoint <file:line>` for breakpoint creation
   - `dtctl get breakpoints` with breakpoint ID in default table output

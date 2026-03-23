@@ -22,9 +22,12 @@ const (
 var updateBreakpointCmd = &cobra.Command{
 	Use:     "breakpoint [<id|filename:line>]",
 	Aliases: []string{"breakpoints", "bp"},
-	Short:   "Update Live Debugger breakpoints and workspace filters",
+	Short:   "Update Live Debugger breakpoints and workspace filters (experimental)",
 	Long: `Update Live Debugger breakpoints by mutable rule ID or source location,
 or update workspace filters for the current project.
+
+Note: Live Debugger support is experimental. The underlying APIs and query
+behavior may change in future releases.
 
 Examples:
   # Add or update a condition
