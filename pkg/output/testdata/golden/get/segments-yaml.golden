@@ -1,0 +1,45 @@
+- uid: a1b2c3d4-e5f6-4a7b-8c9d-seg000000001
+  name: Kubernetes Alpha
+  description: Filters data for Kubernetes cluster alpha
+  ispublic: true
+  owner: admin@example.invalid
+  version: 3
+  includes:
+    - datatype: all
+      filter: k8s.cluster.name = "alpha"
+    - datatype: logs
+      filter: dt.system.bucket = "custom-logs"
+  variables:
+    query: data record(ns="namespace-a"), record(ns="namespace-b")
+    columns:
+      - ns
+  allowedoperations:
+    - READ
+    - WRITE
+    - DELETE
+- uid: b2c3d4e5-f6a7-4b8c-9d0e-seg000000002
+  name: Production Services
+  description: All production microservices
+  ispublic: false
+  owner: platform-team@example.invalid
+  version: 1
+  includes:
+    - datatype: spans
+      filter: environment = "production"
+  variables: null
+  allowedoperations:
+    - READ
+- uid: c3d4e5f6-a7b8-4c9d-0e1f-seg000000003
+  name: Error Logs
+  description: ""
+  ispublic: true
+  owner: sre-team@example.invalid
+  version: 7
+  includes:
+    - datatype: logs
+      filter: status = "ERROR"
+  variables: null
+  allowedoperations:
+    - READ
+    - WRITE
+    - DELETE

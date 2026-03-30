@@ -10,9 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	"gopkg.in/yaml.v3"
 
 	"github.com/dynatrace-oss/dtctl/pkg/exec"
 	"github.com/dynatrace-oss/dtctl/pkg/output"
+	"github.com/dynatrace-oss/dtctl/pkg/resources/resolver"
 	"github.com/dynatrace-oss/dtctl/pkg/util/template"
 )
 
@@ -117,6 +119,15 @@ Examples:
   # Include only selected metadata fields
   dtctl query "fetch logs | limit 10" --metadata=executionTimeMilliseconds,scannedRecords,scannedBytes
   dtctl query "fetch logs | limit 10" -M=queryId,analysisTimeframe -o json
+
+  # Apply a filter segment to narrow results
+  dtctl query "fetch logs | limit 10" --segment my-segment-uid
+
+  # Apply multiple segments (AND-combined)
+  dtctl query "fetch logs | limit 10" -S seg-uid-1 -S seg-uid-2
+
+  # Apply segments with variables from a YAML file
+  dtctl query "fetch logs | limit 10" --segments-file segments.yaml
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !isSupportedQueryOutputFormat(outputFormat) {
@@ -241,6 +252,47 @@ Examples:
 			}
 		}
 
+		// Parse filter segments
+		segmentFlags, _ := cmd.Flags().GetStringArray("segment")
+		segmentsFile, _ := cmd.Flags().GetString("segments-file")
+
+		var segments []exec.FilterSegmentRef
+		if len(segmentFlags) > 0 || segmentsFile != "" {
+			var flagRefs, fileRefs []exec.FilterSegmentRef
+
+			if len(segmentFlags) > 0 {
+				flagRefs, err = parseSegmentFlags(segmentFlags)
+				if err != nil {
+					return err
+				}
+
+				// Resolve segment names to UIDs for --segment flag values.
+				// IDs from --segments-file are assumed to be UIDs already (the file
+				// format mirrors the API and should use UIDs).
+				res := resolver.NewResolver(c)
+				for i, ref := range flagRefs {
+					resolved, resolveErr := res.ResolveID(resolver.TypeSegment, ref.ID)
+					if resolveErr != nil {
+						return fmt.Errorf("failed to resolve segment %q: %w", ref.ID, resolveErr)
+					}
+					flagRefs[i].ID = resolved
+				}
+			}
+
+			if segmentsFile != "" {
+				fileRefs, err = parseSegmentsFile(segmentsFile)
+				if err != nil {
+					return err
+				}
+			}
+
+			segments = mergeSegmentRefs(flagRefs, fileRefs)
+
+			if len(segments) > maxSegmentsPerQuery {
+				return fmt.Errorf("too many segments: %d specified, maximum is %d per query", len(segments), maxSegmentsPerQuery)
+			}
+		}
+
 		opts := exec.DQLExecuteOptions{
 			OutputFormat:                 outputFormat,
 			Decode:                       decodeMode,
@@ -261,6 +313,7 @@ Examples:
 			Locale:                       locale,
 			Timezone:                     timezone,
 			MetadataFields:               metadataFields,
+			Segments:                     segments,
 		}
 
 		// Handle live mode
@@ -326,6 +379,75 @@ Examples:
 	},
 }
 
+// maxSegmentsPerQuery is the maximum number of filter segments allowed per query (Dynatrace limit).
+const maxSegmentsPerQuery = 10
+
+// parseSegmentFlags parses --segment flag values into FilterSegmentRef entries (no variables).
+func parseSegmentFlags(segmentIDs []string) ([]exec.FilterSegmentRef, error) {
+	var refs []exec.FilterSegmentRef
+	for _, id := range segmentIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return nil, fmt.Errorf("--segment value must not be empty")
+		}
+		refs = append(refs, exec.FilterSegmentRef{ID: id})
+	}
+	return refs, nil
+}
+
+// parseSegmentsFile reads a YAML file containing an array of FilterSegmentRef entries.
+func parseSegmentsFile(path string) ([]exec.FilterSegmentRef, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read segments file: %w", err)
+	}
+
+	var refs []exec.FilterSegmentRef
+	if err := yaml.Unmarshal(data, &refs); err != nil {
+		return nil, fmt.Errorf("failed to parse segments file %q: %w", path, err)
+	}
+
+	// Validate entries
+	for i, ref := range refs {
+		if ref.ID == "" {
+			return nil, fmt.Errorf("segment entry %d in %q is missing required 'id' field", i+1, path)
+		}
+	}
+
+	return refs, nil
+}
+
+// mergeSegmentRefs merges segment refs from --segment flags and --segments-file.
+// File entries win on ID conflict (they may carry variables). Duplicates by ID are deduplicated.
+func mergeSegmentRefs(flagRefs, fileRefs []exec.FilterSegmentRef) []exec.FilterSegmentRef {
+	// Build map keyed by ID; file entries are added first so flag entries
+	// only fill in IDs not already present (file wins).
+	seen := make(map[string]exec.FilterSegmentRef, len(flagRefs)+len(fileRefs))
+	order := make([]string, 0, len(flagRefs)+len(fileRefs))
+
+	// File entries first (higher priority)
+	for _, ref := range fileRefs {
+		if _, exists := seen[ref.ID]; !exists {
+			order = append(order, ref.ID)
+		}
+		seen[ref.ID] = ref
+	}
+
+	// Flag entries only if not already present from file
+	for _, ref := range flagRefs {
+		if _, exists := seen[ref.ID]; !exists {
+			order = append(order, ref.ID)
+			seen[ref.ID] = ref
+		}
+	}
+
+	merged := make([]exec.FilterSegmentRef, 0, len(order))
+	for _, id := range order {
+		merged = append(merged, seen[id])
+	}
+	return merged
+}
+
 func init() {
 	rootCmd.AddCommand(queryCmd)
 
@@ -377,6 +499,10 @@ bare --decode-snapshots simplifies variant wrappers to plain values;
 --decode-snapshots=full preserves the full decoded tree with type annotations`)
 	queryCmd.Flags().Lookup("decode-snapshots").NoOptDefVal = "simplified"
 
+	// Filter segment flags
+	queryCmd.Flags().StringArrayP("segment", "S", nil, "filter segment ID to apply to the query (repeatable, max 10, AND-combined)")
+	queryCmd.Flags().String("segments-file", "", "YAML file with filter segment definitions (supports variables)")
+
 	// Shell completion for --metadata field names (supports comma-separated values)
 	_ = queryCmd.RegisterFlagCompletionFunc("metadata", metadataFieldCompletion)
 
@@ -386,6 +512,11 @@ bare --decode-snapshots simplifies variant wrappers to plain values;
 			"simplified\tFlatten variant wrappers to plain values (default)",
 			"full\tPreserve full decoded tree with type annotations",
 		}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Shell completion for --segments-file (YAML files)
+	_ = queryCmd.RegisterFlagCompletionFunc("segments-file", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt
 	})
 }
 

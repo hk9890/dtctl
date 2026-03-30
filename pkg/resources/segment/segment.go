@@ -1,0 +1,216 @@
+package segment
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/dynatrace-oss/dtctl/pkg/client"
+)
+
+const basePath = "/platform/storage/management/v1/filter-segments"
+
+// Handler handles Grail filter segment resources
+type Handler struct {
+	client *client.Client
+}
+
+// NewHandler creates a new segment handler
+func NewHandler(c *client.Client) *Handler {
+	return &Handler{client: c}
+}
+
+// FilterSegment is the read model for a Grail filter segment.
+type FilterSegment struct {
+	UID               string     `json:"uid" table:"UID"`
+	Name              string     `json:"name" table:"NAME"`
+	Description       string     `json:"description,omitempty" table:"DESCRIPTION,wide"`
+	IsPublic          bool       `json:"isPublic" table:"PUBLIC"`
+	Owner             string     `json:"owner,omitempty" table:"OWNER,wide"`
+	Version           int        `json:"version,omitempty" table:"-"`
+	Includes          []Include  `json:"includes,omitempty" table:"-"`
+	Variables         *Variables `json:"variables,omitempty" table:"-"`
+	AllowedOperations []string   `json:"allowedOperations,omitempty" table:"-"`
+}
+
+// Include represents a single include rule within a segment.
+type Include struct {
+	DataType string `json:"dataType"` // "all", "logs", "metrics", "spans", etc.
+	Filter   string `json:"filter"`
+}
+
+// Variables holds the variable configuration for a segment.
+type Variables struct {
+	Query   string   `json:"query,omitempty"`   // DQL query for dynamic values
+	Columns []string `json:"columns,omitempty"` // Variable column names
+}
+
+// FilterSegmentList represents a paginated list of filter segments.
+type FilterSegmentList struct {
+	FilterSegments []FilterSegment `json:"filterSegments"`
+	TotalCount     int             `json:"totalCount,omitempty"`
+	NextPageKey    string          `json:"nextPageKey,omitempty"`
+}
+
+// List lists all filter segments, handling pagination.
+func (h *Handler) List() (*FilterSegmentList, error) {
+	var allSegments []FilterSegment
+	var nextPageKey string
+
+	for {
+		req := h.client.HTTP().R()
+
+		// Follow the default pagination pattern:
+		// page-size only on first request, page-key only on subsequent requests.
+		if nextPageKey != "" {
+			req.SetQueryParam("page-key", nextPageKey)
+		} else {
+			req.SetQueryParam("page-size", "500")
+		}
+
+		resp, err := req.Get(basePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list segments: %w", err)
+		}
+
+		if resp.IsError() {
+			return nil, fmt.Errorf("failed to list segments: status %d: %s", resp.StatusCode(), resp.String())
+		}
+
+		var page FilterSegmentList
+		if err := json.Unmarshal(resp.Body(), &page); err != nil {
+			return nil, fmt.Errorf("failed to parse segments response: %w", err)
+		}
+
+		allSegments = append(allSegments, page.FilterSegments...)
+
+		if page.NextPageKey == "" {
+			break
+		}
+		nextPageKey = page.NextPageKey
+	}
+
+	return &FilterSegmentList{
+		FilterSegments: allSegments,
+		TotalCount:     len(allSegments),
+	}, nil
+}
+
+// Get gets a specific filter segment by UID.
+func (h *Handler) Get(uid string) (*FilterSegment, error) {
+	resp, err := h.client.HTTP().R().
+		Get(fmt.Sprintf("%s/%s", basePath, uid))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get segment: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 404:
+			return nil, fmt.Errorf("segment %q not found", uid)
+		default:
+			return nil, fmt.Errorf("failed to get segment: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	var result FilterSegment
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse segment response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// Create creates a new filter segment from raw JSON/YAML bytes.
+func (h *Handler) Create(data []byte) (*FilterSegment, error) {
+	resp, err := h.client.HTTP().R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(data).
+		Post(basePath)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create segment: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 400:
+			return nil, fmt.Errorf("invalid segment definition: %s", resp.String())
+		case 403:
+			return nil, fmt.Errorf("access denied to create segment")
+		case 409:
+			return nil, fmt.Errorf("segment already exists: %s", resp.String())
+		default:
+			return nil, fmt.Errorf("failed to create segment: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	var result FilterSegment
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse create response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// Update updates an existing filter segment.
+func (h *Handler) Update(uid string, data []byte) error {
+	resp, err := h.client.HTTP().R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(data).
+		Put(fmt.Sprintf("%s/%s", basePath, uid))
+
+	if err != nil {
+		return fmt.Errorf("failed to update segment: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 400:
+			return fmt.Errorf("invalid segment definition: %s", resp.String())
+		case 403:
+			return fmt.Errorf("access denied to update segment %q", uid)
+		case 404:
+			return fmt.Errorf("segment %q not found", uid)
+		case 409:
+			return fmt.Errorf("segment version conflict (segment was modified)")
+		default:
+			return fmt.Errorf("failed to update segment: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	return nil
+}
+
+// Delete deletes a filter segment by UID.
+func (h *Handler) Delete(uid string) error {
+	resp, err := h.client.HTTP().R().
+		Delete(fmt.Sprintf("%s/%s", basePath, uid))
+
+	if err != nil {
+		return fmt.Errorf("failed to delete segment: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 403:
+			return fmt.Errorf("access denied to delete segment %q", uid)
+		case 404:
+			return fmt.Errorf("segment %q not found", uid)
+		default:
+			return fmt.Errorf("failed to delete segment: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	return nil
+}
+
+// GetRaw gets a segment as raw JSON bytes (for edit command).
+func (h *Handler) GetRaw(uid string) ([]byte, error) {
+	seg, err := h.Get(uid)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.MarshalIndent(seg, "", "  ")
+}

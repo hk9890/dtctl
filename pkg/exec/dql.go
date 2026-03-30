@@ -34,6 +34,18 @@ const (
 	DecodeFull
 )
 
+// FilterSegmentRef identifies a segment and optional variable bindings for query execution.
+type FilterSegmentRef struct {
+	ID        string                  `json:"id"`
+	Variables []FilterSegmentVariable `json:"variables,omitempty"`
+}
+
+// FilterSegmentVariable defines a variable binding for a filter segment.
+type FilterSegmentVariable struct {
+	Name   string   `json:"name"`
+	Values []string `json:"values"`
+}
+
 // DQLExecuteOptions configures DQL query execution
 type DQLExecuteOptions struct {
 	// Output formatting options
@@ -66,6 +78,9 @@ type DQLExecuteOptions struct {
 
 	// Metadata options
 	MetadataFields []string // Metadata fields to include; nil/empty = disabled, ["all"] = all fields, specific names = filtered
+
+	// Segment options
+	Segments []FilterSegmentRef // Filter segments to apply to the query
 }
 
 // DQLVerifyOptions configures DQL query verification
@@ -77,21 +92,22 @@ type DQLVerifyOptions struct {
 
 // DQLQueryRequest represents a DQL query request
 type DQLQueryRequest struct {
-	Query                        string  `json:"query"`
-	RequestTimeoutMilliseconds   int64   `json:"requestTimeoutMilliseconds,omitempty"`
-	MaxResultRecords             int64   `json:"maxResultRecords,omitempty"`
-	MaxResultBytes               int64   `json:"maxResultBytes,omitempty"`
-	DefaultScanLimitGbytes       float64 `json:"defaultScanLimitGbytes,omitempty"`
-	DefaultSamplingRatio         float64 `json:"defaultSamplingRatio,omitempty"`
-	FetchTimeoutSeconds          int32   `json:"fetchTimeoutSeconds,omitempty"`
-	EnablePreview                bool    `json:"enablePreview,omitempty"`
-	EnforceQueryConsumptionLimit bool    `json:"enforceQueryConsumptionLimit,omitempty"`
-	IncludeTypes                 *bool   `json:"includeTypes,omitempty"`         // Pointer to distinguish between unset and false
-	IncludeContributions         *bool   `json:"includeContributions,omitempty"` // Pointer to distinguish between unset and false
-	DefaultTimeframeStart        string  `json:"defaultTimeframeStart,omitempty"`
-	DefaultTimeframeEnd          string  `json:"defaultTimeframeEnd,omitempty"`
-	Locale                       string  `json:"locale,omitempty"`
-	Timezone                     string  `json:"timezone,omitempty"`
+	Query                        string             `json:"query"`
+	RequestTimeoutMilliseconds   int64              `json:"requestTimeoutMilliseconds,omitempty"`
+	MaxResultRecords             int64              `json:"maxResultRecords,omitempty"`
+	MaxResultBytes               int64              `json:"maxResultBytes,omitempty"`
+	DefaultScanLimitGbytes       float64            `json:"defaultScanLimitGbytes,omitempty"`
+	DefaultSamplingRatio         float64            `json:"defaultSamplingRatio,omitempty"`
+	FetchTimeoutSeconds          int32              `json:"fetchTimeoutSeconds,omitempty"`
+	EnablePreview                bool               `json:"enablePreview,omitempty"`
+	EnforceQueryConsumptionLimit bool               `json:"enforceQueryConsumptionLimit,omitempty"`
+	IncludeTypes                 *bool              `json:"includeTypes,omitempty"`         // Pointer to distinguish between unset and false
+	IncludeContributions         *bool              `json:"includeContributions,omitempty"` // Pointer to distinguish between unset and false
+	DefaultTimeframeStart        string             `json:"defaultTimeframeStart,omitempty"`
+	DefaultTimeframeEnd          string             `json:"defaultTimeframeEnd,omitempty"`
+	Locale                       string             `json:"locale,omitempty"`
+	Timezone                     string             `json:"timezone,omitempty"`
+	FilterSegments               []FilterSegmentRef `json:"filterSegments,omitempty"`
 }
 
 // DQLQueryResponse represents a DQL query response
@@ -269,6 +285,11 @@ func (e *DQLExecutor) ExecuteQueryWithOptions(query string, opts DQLExecuteOptio
 	}
 	if opts.Timezone != "" {
 		req.Timezone = opts.Timezone
+	}
+
+	// Set filter segments
+	if len(opts.Segments) > 0 {
+		req.FilterSegments = opts.Segments
 	}
 
 	var result DQLQueryResponse

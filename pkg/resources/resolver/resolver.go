@@ -6,6 +6,7 @@ import (
 
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/document"
+	"github.com/dynatrace-oss/dtctl/pkg/resources/segment"
 	"github.com/dynatrace-oss/dtctl/pkg/resources/workflow"
 )
 
@@ -27,6 +28,7 @@ const (
 	TypeDashboard ResourceType = "dashboard"
 	TypeNotebook  ResourceType = "notebook"
 	TypeDocument  ResourceType = "document" // generic, searches all document types
+	TypeSegment   ResourceType = "segment"
 )
 
 // ResolveID resolves a name or ID to a resource ID
@@ -61,7 +63,8 @@ func (r *Resolver) ResolveID(resourceType ResourceType, identifier string) (stri
 func (r *Resolver) looksLikeID(str string, resourceType ResourceType) bool {
 	// All supported resource types use UUIDs (with dashes)
 	if resourceType == TypeDashboard || resourceType == TypeNotebook ||
-		resourceType == TypeWorkflow || resourceType == TypeDocument {
+		resourceType == TypeWorkflow || resourceType == TypeDocument ||
+		resourceType == TypeSegment {
 		// Simple heuristic: contains dashes and is long enough
 		return strings.Contains(str, "-") && len(str) > 20
 	}
@@ -87,6 +90,8 @@ func (r *Resolver) searchByName(resourceType ResourceType, name string) ([]Resou
 		return r.searchNotebooks(name)
 	case TypeDocument:
 		return r.searchAllDocuments(name)
+	case TypeSegment:
+		return r.searchSegments(name)
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
 	}
@@ -109,6 +114,30 @@ func (r *Resolver) searchWorkflows(name string) ([]Resource, error) {
 				ID:   wf.ID,
 				Name: wf.Title,
 				Type: TypeWorkflow,
+			})
+		}
+	}
+
+	return matches, nil
+}
+
+// searchSegments searches for segments by name
+func (r *Resolver) searchSegments(name string) ([]Resource, error) {
+	handler := segment.NewHandler(r.client)
+	list, err := handler.List()
+	if err != nil {
+		return nil, err
+	}
+
+	var matches []Resource
+	nameLower := strings.ToLower(name)
+
+	for _, seg := range list.FilterSegments {
+		if strings.Contains(strings.ToLower(seg.Name), nameLower) {
+			matches = append(matches, Resource{
+				ID:   seg.UID,
+				Name: seg.Name,
+				Type: TypeSegment,
 			})
 		}
 	}
