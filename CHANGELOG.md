@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-03-30
+
 ### Added
-- **Cross-client skill installation** — `dtctl skills install --cross-client` installs skills to the shared `~/.agents/skills/` directory defined by the [agentskills.io](https://agentskills.io) convention, so any compatible agent automatically discovers them without needing per-agent installation
+- **Cross-client skill installation** — `dtctl skills install --cross-client` installs skills to the shared `.agents/skills/` directory defined by the [agentskills.io](https://agentskills.io) convention, so any compatible agent automatically discovers them without needing per-agent installation; use `--cross-client --global` to install to `~/.agents/skills/dtctl/` for user-wide availability; `--for cross-client` is also supported on `status` for targeted checks
+- **AI Agent Skills documentation** — new "AI Agent Skills" section in the Quick Start guide covering install, cross-client, status, uninstall, and listing agents; new "Skills Management" subsection in the API Design docs
+
+### Fixed
+- **`skills status` blank env var in output** — when displaying status for the cross-client pseudo-agent, `printStatus` would produce `"(detected via  env)"` with a blank environment variable name; now correctly omits the detection suffix for agents without an env var
+- **Shell completion for `--for cross-client`** — the `--for` flag tab completion on `skills status` now includes `cross-client` as a valid option alongside all per-agent names
+
+### Documentation
+- **Improved installation instructions and contribution guidelines** — updated README and CONTRIBUTING.md with clearer setup steps and contributor guidance
 
 ## [0.20.1] - 2026-03-25
 

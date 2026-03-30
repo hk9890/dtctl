@@ -2,7 +2,7 @@ package version
 
 // Version is the current version of dtctl
 // This can be overridden at build time with -ldflags
-var Version = "0.20.1"
+var Version = "0.20.2"
 
 // Commit is the git commit hash (set at build time)
 var Commit = "unknown"
