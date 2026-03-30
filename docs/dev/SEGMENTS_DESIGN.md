@@ -38,7 +38,7 @@ FilterSegmentVariableDefinition {
 
 ### Management API
 
-Base path: `/platform/storage/management/v1/filter-segments`
+Base path: `/platform/storage/filter-segments/v1/filter-segments`
 
 | Method | Path | Description |
 |--------|------|-------------|

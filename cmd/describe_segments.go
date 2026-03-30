@@ -65,15 +65,15 @@ Examples:
 			if len(seg.Includes) > 0 {
 				fmt.Println()
 				output.DescribeSection("Includes:")
-				fmt.Printf("  %-20s %s\n", "TYPE", "FILTER")
+				fmt.Printf("  %-20s %s\n", "DATA OBJECT", "FILTER")
 				for _, inc := range seg.Includes {
-					dataType := inc.DataType
-					if strings.EqualFold(dataType, "all") {
-						dataType = "All data types"
+					dataObject := inc.DataObject
+					if dataObject == "_all_data_object" {
+						dataObject = "All data objects"
 					} else {
-						dataType = strings.Title(dataType) //nolint:staticcheck
+						dataObject = strings.Title(dataObject) //nolint:staticcheck
 					}
-					fmt.Printf("  %-20s %s\n", dataType, inc.Filter)
+					fmt.Printf("  %-20s %s\n", dataObject, inc.Filter)
 				}
 			}
 
@@ -81,11 +81,11 @@ Examples:
 			if seg.Variables != nil {
 				fmt.Println()
 				output.DescribeSection("Variables:")
-				if seg.Variables.Query != "" {
-					output.DescribeKV("  Query:", 12, "%s", seg.Variables.Query)
+				if seg.Variables.Type != "" {
+					output.DescribeKV("  Type:", 12, "%s", seg.Variables.Type)
 				}
-				if len(seg.Variables.Columns) > 0 {
-					output.DescribeKV("  Columns:", 12, "%s", strings.Join(seg.Variables.Columns, ", "))
+				if seg.Variables.Value != "" {
+					output.DescribeKV("  Value:", 12, "%s", seg.Variables.Value)
 				}
 			}
 

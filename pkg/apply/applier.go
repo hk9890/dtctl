@@ -1637,7 +1637,7 @@ func (a *Applier) applySegment(data []byte) (ApplyResult, error) {
 	}
 
 	// Update existing segment
-	if err := handler.Update(uid, data); err != nil {
+	if err := handler.Update(uid, existing.Version, data); err != nil {
 		return nil, fmt.Errorf("failed to update segment: %w", err)
 	}
 

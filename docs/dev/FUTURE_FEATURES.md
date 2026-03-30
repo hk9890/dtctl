@@ -165,11 +165,11 @@ type Fieldset struct {
 
 ### Endpoints to Implement
 
-- `GET /platform/storage/management/v1/filter-segments` - List segments
-- `GET /platform/storage/management/v1/filter-segments/{segmentName}` - Get segment
-- `POST /platform/storage/management/v1/filter-segments` - Create segment
-- `PUT /platform/storage/management/v1/filter-segments/{segmentName}` - Update segment
-- `DELETE /platform/storage/management/v1/filter-segments/{segmentName}` - Delete segment
+- `GET /platform/storage/filter-segments/v1/filter-segments` - List segments
+- `GET /platform/storage/filter-segments/v1/filter-segments/{segmentName}` - Get segment
+- `POST /platform/storage/filter-segments/v1/filter-segments` - Create segment
+- `PUT /platform/storage/filter-segments/v1/filter-segments/{segmentName}` - Update segment
+- `DELETE /platform/storage/filter-segments/v1/filter-segments/{segmentName}` - Delete segment
 
 ### Commands
 

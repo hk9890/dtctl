@@ -7,19 +7,17 @@
   "version": 3,
   "includes": [
     {
-      "dataType": "all",
+      "dataObject": "_all_data_object",
       "filter": "k8s.cluster.name = \"alpha\""
     },
     {
-      "dataType": "logs",
+      "dataObject": "logs",
       "filter": "dt.system.bucket = \"custom-logs\""
     }
   ],
   "variables": {
-    "query": "data record(ns=\"namespace-a\"), record(ns=\"namespace-b\")",
-    "columns": [
-      "ns"
-    ]
+    "type": "query",
+    "value": "fetch logs | limit 1"
   },
   "allowedOperations": [
     "READ",

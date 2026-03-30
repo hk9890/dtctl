@@ -159,7 +159,7 @@ Examples:
 		}
 
 		// Update the segment
-		if err := handler.Update(uid, jsonData); err != nil {
+		if err := handler.Update(uid, seg.Version, jsonData); err != nil {
 			return err
 		}
 

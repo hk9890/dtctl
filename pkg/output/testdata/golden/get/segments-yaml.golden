@@ -4,15 +4,15 @@
   ispublic: true
   owner: admin@example.invalid
   version: 3
+  isreadymade: false
   includes:
-    - datatype: all
+    - dataobject: _all_data_object
       filter: k8s.cluster.name = "alpha"
-    - datatype: logs
+    - dataobject: logs
       filter: dt.system.bucket = "custom-logs"
   variables:
-    query: data record(ns="namespace-a"), record(ns="namespace-b")
-    columns:
-      - ns
+    type: query
+    value: fetch logs | limit 1
   allowedoperations:
     - READ
     - WRITE
@@ -23,8 +23,9 @@
   ispublic: false
   owner: platform-team@example.invalid
   version: 1
+  isreadymade: false
   includes:
-    - datatype: spans
+    - dataobject: spans
       filter: environment = "production"
   variables: null
   allowedoperations:
@@ -35,8 +36,9 @@
   ispublic: true
   owner: sre-team@example.invalid
   version: 7
+  isreadymade: false
   includes:
-    - datatype: logs
+    - dataobject: logs
       filter: status = "ERROR"
   variables: null
   allowedoperations:

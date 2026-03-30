@@ -7,7 +7,7 @@ import (
 	"github.com/dynatrace-oss/dtctl/pkg/client"
 )
 
-const basePath = "/platform/storage/management/v1/filter-segments"
+const basePath = "/platform/storage/filter-segments/v1/filter-segments"
 
 // Handler handles Grail filter segment resources
 type Handler struct {
@@ -27,6 +27,7 @@ type FilterSegment struct {
 	IsPublic          bool       `json:"isPublic" table:"PUBLIC"`
 	Owner             string     `json:"owner,omitempty" table:"OWNER,wide"`
 	Version           int        `json:"version,omitempty" table:"-"`
+	IsReadyMade       bool       `json:"isReadyMade,omitempty" table:"-"`
 	Includes          []Include  `json:"includes,omitempty" table:"-"`
 	Variables         *Variables `json:"variables,omitempty" table:"-"`
 	AllowedOperations []string   `json:"allowedOperations,omitempty" table:"-"`
@@ -34,70 +35,50 @@ type FilterSegment struct {
 
 // Include represents a single include rule within a segment.
 type Include struct {
-	DataType string `json:"dataType"` // "all", "logs", "metrics", "spans", etc.
-	Filter   string `json:"filter"`
+	DataObject string `json:"dataObject"` // "logs", "spans", etc. Use "_all_data_object" for all.
+	Filter     string `json:"filter"`
 }
 
 // Variables holds the variable configuration for a segment.
 type Variables struct {
-	Query   string   `json:"query,omitempty"`   // DQL query for dynamic values
-	Columns []string `json:"columns,omitempty"` // Variable column names
+	Type  string `json:"type"`  // Variable type, e.g. "query"
+	Value string `json:"value"` // Variable value, e.g. a DQL expression
 }
 
-// FilterSegmentList represents a paginated list of filter segments.
+// FilterSegmentList represents a list of filter segments.
+// The filter-segments API does not support pagination; all segments are
+// returned in a single response.
 type FilterSegmentList struct {
 	FilterSegments []FilterSegment `json:"filterSegments"`
 	TotalCount     int             `json:"totalCount,omitempty"`
-	NextPageKey    string          `json:"nextPageKey,omitempty"`
 }
 
-// List lists all filter segments, handling pagination.
+// List lists all filter segments.
+// The filter-segments API returns all segments in one response (no pagination).
 func (h *Handler) List() (*FilterSegmentList, error) {
-	var allSegments []FilterSegment
-	var nextPageKey string
-
-	for {
-		req := h.client.HTTP().R()
-
-		// Follow the default pagination pattern:
-		// page-size only on first request, page-key only on subsequent requests.
-		if nextPageKey != "" {
-			req.SetQueryParam("page-key", nextPageKey)
-		} else {
-			req.SetQueryParam("page-size", "500")
-		}
-
-		resp, err := req.Get(basePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list segments: %w", err)
-		}
-
-		if resp.IsError() {
-			return nil, fmt.Errorf("failed to list segments: status %d: %s", resp.StatusCode(), resp.String())
-		}
-
-		var page FilterSegmentList
-		if err := json.Unmarshal(resp.Body(), &page); err != nil {
-			return nil, fmt.Errorf("failed to parse segments response: %w", err)
-		}
-
-		allSegments = append(allSegments, page.FilterSegments...)
-
-		if page.NextPageKey == "" {
-			break
-		}
-		nextPageKey = page.NextPageKey
+	resp, err := h.client.HTTP().R().Get(basePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list segments: %w", err)
 	}
 
-	return &FilterSegmentList{
-		FilterSegments: allSegments,
-		TotalCount:     len(allSegments),
-	}, nil
+	if resp.IsError() {
+		return nil, fmt.Errorf("failed to list segments: status %d: %s", resp.StatusCode(), resp.String())
+	}
+
+	var result FilterSegmentList
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse segments response: %w", err)
+	}
+
+	return &result, nil
 }
 
 // Get gets a specific filter segment by UID.
 func (h *Handler) Get(uid string) (*FilterSegment, error) {
 	resp, err := h.client.HTTP().R().
+		SetQueryParamsFromValues(map[string][]string{
+			"add-fields": {"INCLUDES", "VARIABLES"},
+		}).
 		Get(fmt.Sprintf("%s/%s", basePath, uid))
 
 	if err != nil {
@@ -154,9 +135,11 @@ func (h *Handler) Create(data []byte) (*FilterSegment, error) {
 }
 
 // Update updates an existing filter segment.
-func (h *Handler) Update(uid string, data []byte) error {
+// The version parameter is required for optimistic locking.
+func (h *Handler) Update(uid string, version int, data []byte) error {
 	resp, err := h.client.HTTP().R().
 		SetHeader("Content-Type", "application/json").
+		SetQueryParam("optimistic-locking-version", fmt.Sprintf("%d", version)).
 		SetBody(data).
 		Put(fmt.Sprintf("%s/%s", basePath, uid))
 

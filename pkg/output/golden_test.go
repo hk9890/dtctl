@@ -378,12 +378,12 @@ func segmentFixtures() []segment.FilterSegment {
 			Owner:       "admin@example.invalid",
 			Version:     3,
 			Includes: []segment.Include{
-				{DataType: "all", Filter: `k8s.cluster.name = "alpha"`},
-				{DataType: "logs", Filter: `dt.system.bucket = "custom-logs"`},
+				{DataObject: "_all_data_object", Filter: `k8s.cluster.name = "alpha"`},
+				{DataObject: "logs", Filter: `dt.system.bucket = "custom-logs"`},
 			},
 			Variables: &segment.Variables{
-				Query:   `data record(ns="namespace-a"), record(ns="namespace-b")`,
-				Columns: []string{"ns"},
+				Type:  "query",
+				Value: `fetch logs | limit 1`,
 			},
 			AllowedOperations: []string{"READ", "WRITE", "DELETE"},
 		},
@@ -395,7 +395,7 @@ func segmentFixtures() []segment.FilterSegment {
 			Owner:       "platform-team@example.invalid",
 			Version:     1,
 			Includes: []segment.Include{
-				{DataType: "spans", Filter: `environment = "production"`},
+				{DataObject: "spans", Filter: `environment = "production"`},
 			},
 			AllowedOperations: []string{"READ"},
 		},
@@ -406,7 +406,7 @@ func segmentFixtures() []segment.FilterSegment {
 			Owner:    "sre-team@example.invalid",
 			Version:  7,
 			Includes: []segment.Include{
-				{DataType: "logs", Filter: `status = "ERROR"`},
+				{DataObject: "logs", Filter: `status = "ERROR"`},
 			},
 			AllowedOperations: []string{"READ", "WRITE", "DELETE"},
 		},
