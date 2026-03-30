@@ -29,28 +29,30 @@ This project adheres to a Code of Conduct that all contributors are expected to 
 
 ### Development Setup
 
-1. **Fork and clone the repository**:
+1. **Fork the repository**.
+
+2. **Clone the repository**:
    ```bash
    git clone https://github.com/dynatrace-oss/dtctl.git
    cd dtctl
    ```
 
-2. **Install dependencies**:
+3. **Install dependencies**:
    ```bash
    go mod download
    ```
 
-3. **Build the project**:
+4. **Build the project**:
    ```bash
    make build
    ```
 
-4. **Run tests**:
+5. **Run tests**:
    ```bash
    make test
    ```
 
-5. **Install development tools**:
+6. **Install development tools**:
    ```bash
    # Install linters
    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
