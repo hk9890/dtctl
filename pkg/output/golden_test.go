@@ -385,7 +385,7 @@ func segmentFixtures() []segment.FilterSegment {
 				Type:  "query",
 				Value: `fetch logs | limit 1`,
 			},
-			VariablesDisplay:  "query",
+			VariablesDisplay:  "Yes",
 			AllowedOperations: []string{"READ", "WRITE", "DELETE"},
 		},
 		{

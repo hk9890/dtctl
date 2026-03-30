@@ -91,7 +91,7 @@ func variablesDisplay(v *Variables) string {
 	if v == nil || v.Type == "" {
 		return ""
 	}
-	return v.Type
+	return "Yes"
 }
 
 // Get gets a specific filter segment by UID.
