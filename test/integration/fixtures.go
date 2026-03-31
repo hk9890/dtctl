@@ -445,6 +445,73 @@ func SegmentFixtureModified(prefix string) []byte {
 	return data
 }
 
+// AnomalyDetectorFixture returns a minimal anomaly detector JSON for integration testing.
+// Uses flattened format with a static threshold analyzer.
+func AnomalyDetectorFixture(prefix string) []byte {
+	ad := map[string]interface{}{
+		"title":       fmt.Sprintf("%s-anomaly-detector", prefix),
+		"description": "Integration test anomaly detector",
+		"enabled":     true,
+		"source":      "dtctl",
+		"analyzer": map[string]interface{}{
+			"name": "dt.statistics.ui.anomaly_detection.StaticThresholdAnomalyDetectionAnalyzer",
+			"input": map[string]interface{}{
+				"query":              "timeseries avg_cpu=avg(dt.host.cpu.usage), interval:5m",
+				"threshold":          "95",
+				"alertCondition":     "ABOVE",
+				"violatingSamples":   "3",
+				"slidingWindow":      "5",
+				"dealertingSamples":  "5",
+				"alertOnMissingData": "false",
+			},
+		},
+		"eventTemplate": map[string]interface{}{
+			"event.type":        "CUSTOM_ALERT",
+			"event.name":        fmt.Sprintf("%s integration test alert", prefix),
+			"event.description": "Integration test anomaly detector alert",
+		},
+		"executionSettings": map[string]interface{}{
+			"queryOffset": 7,
+		},
+	}
+
+	data, _ := json.Marshal(ad)
+	return data
+}
+
+// AnomalyDetectorFixtureModified returns a modified anomaly detector for update testing
+func AnomalyDetectorFixtureModified(prefix string) []byte {
+	ad := map[string]interface{}{
+		"title":       fmt.Sprintf("%s-anomaly-detector-modified", prefix),
+		"description": "Modified integration test anomaly detector",
+		"enabled":     false,
+		"source":      "dtctl",
+		"analyzer": map[string]interface{}{
+			"name": "dt.statistics.ui.anomaly_detection.StaticThresholdAnomalyDetectionAnalyzer",
+			"input": map[string]interface{}{
+				"query":              "timeseries avg_cpu=avg(dt.host.cpu.usage), interval:5m",
+				"threshold":          "90",
+				"alertCondition":     "ABOVE",
+				"violatingSamples":   "5",
+				"slidingWindow":      "10",
+				"dealertingSamples":  "10",
+				"alertOnMissingData": "false",
+			},
+		},
+		"eventTemplate": map[string]interface{}{
+			"event.type":        "CUSTOM_ALERT",
+			"event.name":        fmt.Sprintf("%s modified integration test alert", prefix),
+			"event.description": "Modified integration test anomaly detector alert",
+		},
+		"executionSettings": map[string]interface{}{
+			"queryOffset": 7,
+		},
+	}
+
+	data, _ := json.Marshal(ad)
+	return data
+}
+
 // SegmentFixtureMultiInclude returns a segment with multiple includes for query testing
 func SegmentFixtureMultiInclude(prefix string) []byte {
 	seg := map[string]interface{}{
