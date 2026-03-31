@@ -1,7 +1,7 @@
 # Integration Testing Status
 
 ## Overview
-Integration tests run against a real Dynatrace environment to validate end-to-end functionality. Tests cover workflows, dashboards, notebooks, buckets, settings, SLOs, and EdgeConnect configurations. Most tests are passing, with bucket lifecycle tests skipped due to environment-specific API limitations.
+Integration tests run against a real Dynatrace environment to validate end-to-end functionality. Tests cover workflows, dashboards, notebooks, buckets, settings, SLOs, EdgeConnect configurations, and anomaly detectors. Most tests are passing, with bucket lifecycle tests skipped due to environment-specific API limitations.
 
 ## ✅ Passing Tests
 
@@ -158,11 +158,41 @@ Integration tests run against a real Dynatrace environment to validate end-to-en
 - **TestEdgeConnectGetNonExistent** - Error handling ✅
   - Get non-existent EdgeConnect (error handling)
 
+### Anomaly Detector Tests (100% Complete)
+- **TestAnomalyDetectorLifecycle** - Full CRUD lifecycle ✅
+  - Create anomaly detector (flattened YAML format)
+  - Get anomaly detector by ID
+  - List anomaly detectors (verification)
+  - List with enabled/disabled filtering
+  - FindByName lookup
+  - GetRaw (raw Settings API format)
+  - Update anomaly detector
+  - Delete anomaly detector
+  - Verify deletion
+
+- **TestAnomalyDetectorCreateInvalid** - Error handling ✅
+  - Invalid JSON validation
+  - Empty object validation
+  - Missing analyzer validation
+
+- **TestAnomalyDetectorGetNonExistent** - Error handling ✅
+  - Get non-existent anomaly detector (error handling)
+
+- **TestAnomalyDetectorDeleteNonExistent** - Error handling ✅
+  - Delete non-existent anomaly detector (error handling)
+
+- **TestAnomalyDetectorFindByNameNotFound** - Error handling ✅
+  - FindByName with non-existent name (error handling)
+
+- **TestAnomalyDetectorRawSettingsFormat** - Raw format support ✅
+  - Create with raw Settings API format
+  - Verify raw response structure
+
 ## Test Statistics
 
-- **Total Tests**: 28
-- **Passing**: 25 (89%)
-- **Skipped**: 3 (11%)
+- **Total Tests**: 34
+- **Passing**: 31 (91%)
+- **Skipped**: 3 (9%)
 - **Failing**: 0 (0%)
 
 ### Coverage by Resource Type
@@ -173,6 +203,7 @@ Integration tests run against a real Dynatrace environment to validate end-to-en
 - ✅ **Settings**: 100% complete (4/4 tests passing)
 - ✅ **SLOs**: 100% complete (5/5 tests passing)
 - ✅ **EdgeConnect**: 100% complete (4/4 tests passing)
+- ✅ **Anomaly Detectors**: 100% complete (6/6 tests passing)
 
 ## Running Tests
 
@@ -232,7 +263,7 @@ go test -v -tags integration -run Invalid ./test/e2e/
 ## Test Infrastructure
 
 ### Cleanup System
-- **CleanupTracker** tracks all created resources
+- **CleanupTracker** tracks all created resources (including anomaly detectors via Settings API)
 - Resources deleted in LIFO order (last created, first deleted)
 - Deletion verified (GET must return 404)
 - Ignores 404 errors (already deleted is OK)
@@ -285,11 +316,18 @@ go test -v -tags integration -run Invalid ./test/e2e/
 - Error handling and validation
 - Safe to run - uses non-routable .invalid TLD for host patterns
 
+### Anomaly Detectors
+- Complete CRUD lifecycle with builtin:davis.anomaly-detectors schema
+- Dual format support testing (flattened YAML and raw Settings API format)
+- FindByName resolution and enabled/disabled filtering
+- Error handling (invalid input, non-existent resources)
+- Safe to run - only creates/modifies test resources with unique prefixes
+
 ## Recommendations
 
 1. **Immediate**:
    - All tests are ready for CI/CD validation
-   - Integration tests provide comprehensive coverage of 7 resource types
+   - Integration tests provide comprehensive coverage of 8 resource types
    - New tests follow existing patterns and safety measures
 
 2. **Future Enhancements**:
