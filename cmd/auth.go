@@ -231,7 +231,18 @@ you'll need to use API token authentication instead (dtctl config set-credential
 
 		// Ensure keyring is available before starting OAuth flow
 		if !config.IsKeyringAvailable() {
-			return fmt.Errorf("OAuth login requires a working system keyring, but none is available; please configure a keyring (or disable keyring usage if supported) and try again, or use an alternative authentication method")
+			return &diagnostic.Error{
+				Operation: "auth login",
+				Message:   "OAuth login requires a system keyring, but none is available on this system",
+				Suggestions: []string{
+					"Use token-based authentication instead (recommended for headless/CI environments):",
+					fmt.Sprintf("  dtctl config set-context %s --environment %q --token-ref my-token", contextName, environment),
+					"  dtctl config set-credentials my-token --token <YOUR_PLATFORM_TOKEN>",
+					"Create a platform token at: Identity & Access Management > Access Tokens > Generate new token > Platform token",
+					"For required token scopes, see: dtctl help token-scopes (or docs/TOKEN_SCOPES.md)",
+					"On Linux, install a keyring backend (e.g., gnome-keyring, kwallet, or pass) if you prefer OAuth",
+				},
+			}
 		}
 
 		// Warn about potentially wrong environment URLs
