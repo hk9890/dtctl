@@ -239,10 +239,10 @@ func TestAuthLogin_KeyringRecovery(t *testing.T) {
 // values are supplied as explicit CLI flags.
 func TestResolveLoginContext(t *testing.T) {
 	const (
-		prodURL  = "https://irc65933.apps.dynatrace.com/"
-		hardURL  = "https://eva38390.sprint.apps.dynatracelabs.com/"
-		prodTok  = "prod1sfm-oauth"
-		hardTok  = "hardsfm-oauth"
+		prodURL = "https://irc65933.apps.dynatrace.com/"
+		hardURL = "https://eva38390.sprint.apps.dynatracelabs.com/"
+		prodTok = "prod1sfm-oauth"
+		hardTok = "hardsfm-oauth"
 	)
 
 	makeCfg := func() *config.Config {
