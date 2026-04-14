@@ -152,10 +152,7 @@ func (h *Handler) ListExtensionReleases(id string, chunkSize int64) (*HubExtensi
 		allItems = append(allItems, result.Items...)
 		totalCount = result.TotalCount
 
-		if chunkSize == 0 {
-			return &result, nil
-		}
-		if result.NextPageKey == "" {
+		if chunkSize == 0 || result.NextPageKey == "" {
 			break
 		}
 		nextPageKey = result.NextPageKey

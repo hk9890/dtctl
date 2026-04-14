@@ -2129,3 +2129,34 @@ func TestGolden_DescribeHubExtension(t *testing.T) {
 		})
 	}
 }
+
+func hubExtensionReleaseFixtures() []hub.HubExtensionRelease {
+	return []hub.HubExtensionRelease{
+		{Version: "3.1.0", ReleaseDate: "2025-03-01"},
+		{Version: "3.0.2", ReleaseDate: "2025-01-15"},
+		{Version: "3.0.0", ReleaseDate: "2024-11-20"},
+	}
+}
+
+func TestGolden_GetHubExtensionReleases(t *testing.T) {
+	releases := hubExtensionReleaseFixtures()
+
+	formats := map[string]string{
+		"table": "table",
+		"wide":  "wide",
+		"json":  "json",
+		"yaml":  "yaml",
+		"csv":   "csv",
+	}
+
+	for name, format := range formats {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			printer := NewPrinterWithWriter(format, &buf)
+			if err := printer.PrintList(releases); err != nil {
+				t.Fatalf("PrintList failed: %v", err)
+			}
+			assertGolden(t, "get/hub-extension-releases-"+name, buf.String())
+		})
+	}
+}
