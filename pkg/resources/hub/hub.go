@@ -25,7 +25,7 @@ func NewHandler(c *client.Client) *Handler {
 type HubExtension struct {
 	ID          string `json:"id" table:"ID"`
 	Name        string `json:"name" table:"NAME"`
-	Type        string `json:"type,omitempty" table:"TYPE"`
+	Type        string `json:"type,omitempty" table:"-"`
 	Description string `json:"description,omitempty" table:"DESCRIPTION,wide"`
 }
 
