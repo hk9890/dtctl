@@ -35,6 +35,13 @@ Examples:
 		if err != nil {
 			return err
 		}
+		ap := enrichAgent(printer, "describe", "hub-extension")
+		if ap != nil {
+			ap.SetSuggestions([]string{
+				"dtctl get hub-extension-releases " + id + " -- list available releases",
+				"dtctl get hub-extensions -- list all Hub extensions",
+			})
+		}
 		return printer.Print(ext)
 	},
 }

@@ -38,7 +38,8 @@ Supported resources:
   sdk-versions            analyzers                 copilot-skills
   lookup-tables (lu)      trash                     workflow-executions (wfe)
   wfe-task-result         extensions (ext)          extension-configs (extcfg)
-  documents (doc)         anomaly-detectors (ad)
+  documents (doc)         anomaly-detectors (ad)    hub-extensions
+  hub-extension-releases
 
 Use 'dtctl get <resource> --help' for resource-specific options.`,
 	Example: `  # List all workflows

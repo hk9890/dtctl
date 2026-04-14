@@ -2114,8 +2114,9 @@ func TestGolden_DescribeHubExtension(t *testing.T) {
 	ext := hubExtensionFixtures()[0]
 
 	formats := map[string]string{
-		"json": "json",
-		"yaml": "yaml",
+		"table": "table",
+		"json":  "json",
+		"yaml":  "yaml",
 	}
 
 	for name, format := range formats {

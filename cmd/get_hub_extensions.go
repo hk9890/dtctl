@@ -41,12 +41,29 @@ Examples:
 			if err != nil {
 				return err
 			}
+			ap := enrichAgent(printer, "get", "hub-extension")
+			if ap != nil {
+				ap.SetSuggestions([]string{
+					"dtctl describe hub-extensions " + args[0] + " -- view full extension details",
+					"dtctl get hub-extension-releases " + args[0] + " -- list available releases",
+					"dtctl get hub-extensions -- list all Hub extensions",
+				})
+			}
 			return printer.Print(ext)
 		}
 
 		list, err := handler.ListExtensions(filter, GetChunkSize())
 		if err != nil {
 			return err
+		}
+		ap := enrichAgent(printer, "get", "hub-extension")
+		if ap != nil {
+			ap.SetTotal(len(list.Items))
+			ap.Context().Suggestions = []string{
+				"dtctl get hub-extensions --filter <keyword> -- filter by name, ID, or description",
+				"dtctl describe hub-extensions <id> -- view full extension details",
+				"dtctl get hub-extension-releases <id> -- list releases for an extension",
+			}
 		}
 		return printer.PrintList(list.Items)
 	},
@@ -80,6 +97,14 @@ Examples:
 		list, err := handler.ListExtensionReleases(id, GetChunkSize())
 		if err != nil {
 			return err
+		}
+		ap := enrichAgent(printer, "get", "hub-extension-release")
+		if ap != nil {
+			ap.SetTotal(len(list.Items))
+			ap.Context().Suggestions = []string{
+				"dtctl describe hub-extensions " + id + " -- view full extension details",
+				"dtctl get hub-extensions -- list all Hub extensions",
+			}
 		}
 		return printer.PrintList(list.Items)
 	},

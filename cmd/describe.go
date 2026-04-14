@@ -32,7 +32,7 @@ Supported resources:
   functions (fn, func)    intents                    edgeconnect (ec)
   users                   groups                     lookup-tables (lu)
   trash                   azure connection           azure monitoring
-  extensions (ext)        extension-configs (extcfg)`,
+  extensions (ext)        extension-configs (extcfg) hub-extensions`,
 	Example: `  # Describe a workflow to see its trigger and task details
   dtctl describe workflow my-workflow
 

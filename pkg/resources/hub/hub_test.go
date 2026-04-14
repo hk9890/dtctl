@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/dynatrace-oss/dtctl/pkg/client"
@@ -47,11 +48,8 @@ func paginationGuard(t *testing.T, w http.ResponseWriter, r *http.Request) bool 
 func TestNewHandler(t *testing.T) {
 	c := newTestClient(t, "https://test.example.invalid")
 	h := NewHandler(c)
-	if h == nil {
-		t.Fatal("NewHandler() returned nil")
-	}
-	if h.client == nil {
-		t.Error("Handler.client is nil")
+	if h == nil || h.client == nil {
+		t.Fatal("NewHandler() returned nil or has nil client")
 	}
 }
 
@@ -274,5 +272,76 @@ func TestListExtensionReleases(t *testing.T) {
 	}
 	if len(result.Items) != 2 {
 		t.Errorf("expected 2 releases, got %d", len(result.Items))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// URL escaping
+// ---------------------------------------------------------------------------
+
+func TestGetExtension_URLEscaping(t *testing.T) {
+	// Extension IDs like "com.dynatrace.extension.host-monitoring" contain dots
+	// which should be safely escaped in the URL path.
+	extID := "com.dynatrace.extension.host-monitoring"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expectedPath := "/platform/hub/v1/catalog/extensions/" + url.PathEscape(extID)
+		if r.URL.RawPath != "" {
+			// When the path contains encoded characters, RawPath is set
+			if r.URL.RawPath != expectedPath {
+				t.Errorf("expected raw path %q, got %q", expectedPath, r.URL.RawPath)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		}
+		writeJSON(w, http.StatusOK, HubExtension{
+			ID:   extID,
+			Name: "Host Monitoring",
+			Type: "EXTENSION_2",
+		})
+	}))
+	defer server.Close()
+
+	h := NewHandler(newTestClient(t, server.URL))
+	result, err := h.GetExtension(extID)
+	if err != nil {
+		t.Fatalf("GetExtension() unexpected error: %v", err)
+	}
+	if result.ID != extID {
+		t.Errorf("expected ID %q, got %q", extID, result.ID)
+	}
+}
+
+func TestListExtensionReleases_URLEscaping(t *testing.T) {
+	extID := "com.dynatrace.extension.host-monitoring"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expectedPath := "/platform/hub/v1/catalog/extensions/" + url.PathEscape(extID) + "/releases"
+		if r.URL.RawPath != "" {
+			if r.URL.RawPath != expectedPath {
+				t.Errorf("expected raw path %q, got %q", expectedPath, r.URL.RawPath)
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		}
+		if paginationGuard(t, w, r) {
+			return
+		}
+		writeJSON(w, http.StatusOK, HubExtensionReleaseList{
+			TotalCount: 1,
+			Items: []HubExtensionRelease{
+				{Version: "1.0.0", ReleaseDate: "2024-12-01"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	h := NewHandler(newTestClient(t, server.URL))
+	result, err := h.ListExtensionReleases(extID, 0)
+	if err != nil {
+		t.Fatalf("ListExtensionReleases() unexpected error: %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Errorf("expected 1 release, got %d", len(result.Items))
 	}
 }

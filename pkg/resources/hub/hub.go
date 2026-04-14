@@ -2,6 +2,7 @@ package hub
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/dynatrace-oss/dtctl/pkg/client"
@@ -38,9 +39,9 @@ type HubExtensionList struct {
 
 // HubExtensionRelease represents a release of a Hub extension
 type HubExtensionRelease struct {
-	Version     string `json:"version" table:"VERSION"`
-	ReleaseDate string `json:"releaseDate,omitempty" table:"RELEASE_DATE,wide"`
-	Notes       string `json:"notes,omitempty" table:"-"`
+	Version     string `json:"version" yaml:"version" table:"VERSION"`
+	ReleaseDate string `json:"releaseDate,omitempty" yaml:"releaseDate,omitempty" table:"RELEASE_DATE,wide"`
+	Notes       string `json:"notes,omitempty" yaml:"notes,omitempty" table:"-"`
 }
 
 // HubExtensionReleaseList represents a list of Hub extension releases
@@ -111,7 +112,7 @@ func (h *Handler) GetExtension(id string) (*HubExtension, error) {
 
 	resp, err := h.client.HTTP().R().
 		SetResult(&result).
-		Get(fmt.Sprintf("/platform/hub/v1/catalog/extensions/%s", id))
+		Get(fmt.Sprintf("/platform/hub/v1/catalog/extensions/%s", url.PathEscape(id)))
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Hub extension: %w", err)
@@ -141,7 +142,7 @@ func (h *Handler) ListExtensionReleases(id string, chunkSize int64) (*HubExtensi
 			PageSize:      chunkSize,
 		}.Apply(req)
 
-		resp, err := req.Get(fmt.Sprintf("/platform/hub/v1/catalog/extensions/%s/releases", id))
+		resp, err := req.Get(fmt.Sprintf("/platform/hub/v1/catalog/extensions/%s/releases", url.PathEscape(id)))
 		if err != nil {
 			return nil, fmt.Errorf("failed to list releases for Hub extension %q: %w", id, err)
 		}
