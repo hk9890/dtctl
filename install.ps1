@@ -43,28 +43,23 @@ if (-not $asset) {
 
 $downloadUrl = $asset.browser_download_url
 
-# Resolve long paths to avoid 8.3 short-name issues (e.g. C:\Users\LONGUS~1\...)
-# Uses (Get-Item $Path).FullName to obtain the canonical long path from the filesystem.
+# Resolve an existing path to its canonical long form to avoid 8.3 short-name issues
+# (e.g. C:\Users\LONGUS~1\...). Returns the path unchanged if it doesn't exist.
 function Resolve-LongPath {
     param([string]$Path)
     try {
-        # Create the directory first so the long path can be resolved
-        if (-not (Test-Path $Path)) {
-            $parent = Split-Path $Path -Parent
-            if ($parent -and -not (Test-Path $parent)) {
-                New-Item -ItemType Directory -Path $parent -Force | Out-Null
-            }
-        }
         if (Test-Path $Path) {
             return (Get-Item $Path).FullName
         }
-        # For files that don't exist yet, resolve the parent directory
+        # For paths that don't exist yet, resolve the parent directory
         $parent = Split-Path $Path -Parent
         $leaf = Split-Path $Path -Leaf
         if ($parent -and (Test-Path $parent)) {
             return Join-Path (Get-Item $parent).FullName $leaf
         }
-    } catch {}
+    } catch {
+        Write-Debug "Resolve-LongPath: could not resolve '$Path': $_"
+    }
     return $Path
 }
 
@@ -107,8 +102,8 @@ if (-not (Test-Path $exePath)) {
 # Resolve existing PATH entries to long paths before comparing, so an 8.3 short-path
 # entry already in PATH doesn't cause the long-path version to be added as a duplicate.
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-$resolvedUserPath = ($userPath -split ';' | ForEach-Object { Resolve-LongPath $_ }) -join ';'
-if ($resolvedUserPath -notlike "*$installDir*") {
+$resolvedEntries = $userPath -split ';' | ForEach-Object { Resolve-LongPath $_ }
+if ($installDir -notin $resolvedEntries) {
     [Environment]::SetEnvironmentVariable('Path', "$userPath;$installDir", 'User')
     $env:Path = "$env:Path;$installDir"
     Write-Host "Added $installDir to user PATH." -ForegroundColor Green
