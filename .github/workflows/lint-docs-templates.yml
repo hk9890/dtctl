@@ -1,0 +1,83 @@
+name: Lint Docs - Template Variables
+
+on:
+  pull_request:
+    paths:
+      - 'docs/site/_docs/**'
+      - '.github/workflows/lint-docs-templates.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/site/_docs/**'
+      - '.github/workflows/lint-docs-templates.yml'
+
+jobs:
+  lint-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for unescaped Go template variables in docs
+        run: |
+          #!/bin/bash
+          set -e
+          
+          VIOLATIONS_FOUND=0
+          
+          for file in docs/site/_docs/*.md; do
+            # Check if file exists
+            if [ ! -f "$file" ]; then
+              continue
+            fi
+            
+            # Look for {{ .var patterns that are not inside {% raw %} blocks
+            # This is a simplified check - reads file and tracks raw block state
+            in_raw_block=0
+            line_num=0
+            
+            while IFS= read -r line; do
+              line_num=$((line_num + 1))
+              
+              # Track {% raw %} and {% endraw %} tags
+              if [[ "$line" == *"{% raw %}"* ]]; then
+                in_raw_block=$((in_raw_block + 1))
+              fi
+              
+              if [[ "$line" == *"{% endraw %}"* ]]; then
+                in_raw_block=$((in_raw_block - 1))
+              fi
+              
+              # Check for {{ . pattern (Go template variable) outside raw blocks
+              if [[ in_raw_block -eq 0 ]] && [[ "$line" == *"{{ ."* ]]; then
+                echo "❌ Line $line_num in $file: Found unescaped Go template variable"
+                echo "   $line"
+                VIOLATIONS_FOUND=1
+              fi
+            done < "$file"
+          done
+          
+          if [ $VIOLATIONS_FOUND -eq 1 ]; then
+            echo ""
+            echo "⚠️  Unescaped Go template variables found in documentation."
+            echo ""
+            echo "📌 Solution: Wrap code blocks containing Go template variables with Jekyll {% raw %} tags:"
+            echo ""
+            echo "   Before:"
+            echo "   \`\`\`bash"
+            echo "   dtctl query \"fetch logs | filter environment == '{{ .env }}'\" \\"
+            echo "   \`\`\`"
+            echo ""
+            echo "   After:"
+            echo "   {% raw %}"
+            echo "   \`\`\`bash"
+            echo "   dtctl query \"fetch logs | filter environment == '{{ .env }}'\" \\"
+            echo "   \`\`\`"
+            echo "   {% endraw %}"
+            echo ""
+            exit 1
+          fi
+          
+          echo "✅ No unescaped Go template variables found."

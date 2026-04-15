@@ -55,6 +55,7 @@ dtctl describe extension-config <config-id>
 
 Define a monitoring configuration in YAML and create it:
 
+{% raw %}
 ```yaml
 # postgres-monitoring.yaml
 scope: HOST_GROUP-ABC123
@@ -74,6 +75,7 @@ postgresql:
         - name: app_production
           collectMetrics: true
 ```
+{% endraw %}
 
 ```bash
 dtctl create extension-config -f postgres-monitoring.yaml \
@@ -123,6 +125,7 @@ dtctl apply -f postgres-config.yaml
 
 Use Go template syntax and the `--set` flag to deploy the same configuration across environments:
 
+{% raw %}
 ```yaml
 # extension-template.yaml
 scope: "{{ .host_group }}"
@@ -158,6 +161,7 @@ dtctl create extension-config -f extension-template.yaml \
   --set db_host=db-prod-01.internal \
   --set db_password=prod-pass
 ```
+{% endraw %}
 
 ## Aliases
 
@@ -170,6 +174,7 @@ dtctl create extension-config -f extension-template.yaml \
 
 ### SQL Server Extension
 
+{% raw %}
 ```yaml
 scope: HOST_GROUP-SQL01
 description: SQL Server monitoring
@@ -187,9 +192,11 @@ sqlServer:
       databases:
         - name: OrdersDB
 ```
+{% endraw %}
 
 ### SNMP Extension
 
+{% raw %}
 ```yaml
 scope: HOST_GROUP-NETWORK
 description: Network device monitoring
@@ -207,6 +214,7 @@ snmp:
         privProtocol: AES
         privPassword: "{{ .snmp_priv }}"
 ```
+{% endraw %}
 
 ## Hub Catalog
 
