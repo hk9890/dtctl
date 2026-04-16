@@ -2780,12 +2780,12 @@ Note: immediately after step 4, Entra propagation can take a short time. If you 
 dtctl create azure monitoring --name "my-azure-monitoring" --credentials "my-azure-connection"
 ```
 
-### 7) Activate Azure monitoring config
+### 7) Enable Azure monitoring config
 
-Activates the monitoring config and optionally updates the linked connection credentials in one step:
+Enables the monitoring config and optionally updates the linked connection credentials in one step:
 
 ```bash
-dtctl activate azure monitoring --name "my-azure-monitoring" --directoryId "$TENANT_ID" --applicationId "$CLIENT_ID"
+dtctl enable azure monitoring --name "my-azure-monitoring" --directoryId "$TENANT_ID" --applicationId "$CLIENT_ID"
 ```
 
 Verify the config is now enabled:
@@ -2825,6 +2825,12 @@ dtctl create azure monitoring --name "my-azure-monitoring-explicit" \
 ## GCP Monitoring (Preview)
 
 This is the recommended onboarding flow for GCP with service account impersonation.
+
+> **Note:** The Dynatrace backend requires the GCP connection to have a service account
+> configured before a monitoring config can be created against it. This means the connection
+> must be updated with `--serviceAccountId` (step 3) **before** running `create gcp monitoring`
+> (step 4). The `enable` step then only needs to toggle the enabled state — no need to repeat
+> the service account.
 
 All GCP commands in this section are `Preview`.
 
@@ -2888,12 +2894,12 @@ dtctl update gcp connection --name "my-gcp-connection" --serviceAccountId "${CUS
 dtctl create gcp monitoring --name "my-gcp-monitoring" --credentials "my-gcp-connection"
 ```
 
-### 5) Activate GCP monitoring config
+### 5) Enable GCP monitoring config
 
-Activates the monitoring config and optionally updates the linked connection credentials in one step:
+The connection credentials were already set in step 3, so no credential flags are needed here:
 
 ```bash
-dtctl activate gcp monitoring --name "my-gcp-monitoring" --serviceAccountId "${CUSTOMER_SA_EMAIL}"
+dtctl enable gcp monitoring --name "my-gcp-monitoring"
 ```
 
 Verify the config is now enabled:

@@ -119,7 +119,7 @@ Examples:
 		if err != nil {
 			return err
 		}
-		credential.Enabled = false // Created in disabled state; use 'dtctl activate azure monitoring' to enable
+		credential.Enabled = false // Created in disabled state; use 'dtctl enable azure monitoring' to enable
 
 		locations, err := azuremonitoringconfig.ParseOrDefaultLocations(createAzureMonitoringConfigLocationFiltering, monitoringHandler)
 		if err != nil {
@@ -165,7 +165,7 @@ Examples:
 		}
 
 		output.PrintSuccess("Azure monitoring config created (disabled): %s", created.ObjectID)
-		output.PrintInfo("Run 'dtctl activate azure monitoring --name %q' to enable it", createAzureMonitoringConfigName)
+		output.PrintInfo("Run 'dtctl enable azure monitoring --name %q' to enable it", createAzureMonitoringConfigName)
 		return nil
 	},
 }
