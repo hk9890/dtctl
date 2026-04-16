@@ -24,13 +24,12 @@ This guide provides practical examples for using dtctl to manage your Dynatrace 
 13. [Davis AI](#davis-ai)
 14. [Live Debugger](#live-debugger)
 15. [Extensions 2.0](#extensions-20)
-16. [Hub Catalog](#hub-catalog)
-17. [Output Formats](#output-formats)
-18. [Azure Monitoring](#azure-monitoring)
-19. [GCP Monitoring (Preview)](#gcp-monitoring-preview)
-20. [AI Agent Skills](#ai-agent-skills)
-21. [Tips & Tricks](#tips--tricks)
-22. [Troubleshooting](#troubleshooting)
+16. [Output Formats](#output-formats)
+17. [Azure Monitoring](#azure-monitoring)
+18. [GCP Monitoring (Preview)](#gcp-monitoring-preview)
+19. [AI Agent Skills](#ai-agent-skills)
+20. [Tips & Tricks](#tips--tricks)
+21. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -57,16 +56,6 @@ To log out:
 ```bash
 dtctl auth logout
 ```
-
-**Headless environments (CI/CD, containers, WSL):** If no OS keyring is available, set `DTCTL_TOKEN_STORAGE=file` to store OAuth tokens as local files instead (protected by filesystem permissions):
-
-```bash
-export DTCTL_TOKEN_STORAGE=file
-dtctl auth login --context my-env --environment "https://abc12345.apps.dynatrace.com"
-# Tokens stored in ~/.local/share/dtctl/oauth-tokens/ (0600 permissions)
-```
-
-See [File-Based Token Storage](#file-based-token-storage) in Troubleshooting for details.
 
 #### Option 2: Token-based Authentication
 
@@ -2785,15 +2774,28 @@ dtctl update azure connection --name "my-azure-connection" --directoryId "$TENAN
 
 Note: immediately after step 4, Entra propagation can take a short time. If you see AADSTS70025, retry step 5 after a few seconds.
 
-### 6) Create and verify Azure monitoring config
+### 6) Create Azure monitoring config (created as disabled)
 
 ```bash
-dtctl create azure monitoring --name "my-azure-connection" --credentials "my-azure-connection"
-dtctl get azure monitoring my-azure-connection
-dtctl describe azure monitoring my-azure-connection
+dtctl create azure monitoring --name "my-azure-monitoring" --credentials "my-azure-connection"
 ```
 
-### 7) Update Azure monitoring config (examples)
+### 7) Enable Azure monitoring config
+
+Enables the monitoring config and optionally updates the linked connection credentials in one step:
+
+```bash
+dtctl enable azure monitoring --name "my-azure-monitoring" --directoryId "$TENANT_ID" --applicationId "$CLIENT_ID"
+```
+
+Verify the config is now enabled:
+
+```bash
+dtctl get azure monitoring my-azure-monitoring
+dtctl describe azure monitoring my-azure-monitoring
+```
+
+### 8) Update Azure monitoring config (examples)
 
 Change location filtering to two regions:
 
@@ -2823,6 +2825,12 @@ dtctl create azure monitoring --name "my-azure-monitoring-explicit" \
 ## GCP Monitoring (Preview)
 
 This is the recommended onboarding flow for GCP with service account impersonation.
+
+> **Note:** The Dynatrace backend requires the GCP connection to have a service account
+> configured before a monitoring config can be created against it. This means the connection
+> must be updated with `--serviceAccountId` (step 3) **before** running `create gcp monitoring`
+> (step 4). The `enable` step then only needs to toggle the enabled state — no need to repeat
+> the service account.
 
 All GCP commands in this section are `Preview`.
 
@@ -2880,21 +2888,34 @@ Use the service account from step 2 and update connection:
 dtctl update gcp connection --name "my-gcp-connection" --serviceAccountId "${CUSTOMER_SA_EMAIL}"
 ```
 
-### 4) Create and verify GCP monitoring config
+### 4) Create GCP monitoring config (created as disabled)
 
 ```bash
 dtctl create gcp monitoring --name "my-gcp-monitoring" --credentials "my-gcp-connection"
+```
+
+### 5) Enable GCP monitoring config
+
+The connection credentials were already set in step 3, so no credential flags are needed here:
+
+```bash
+dtctl enable gcp monitoring --name "my-gcp-monitoring"
+```
+
+Verify the config is now enabled:
+
+```bash
 dtctl describe gcp monitoring my-gcp-monitoring
 ```
 
-### 5) Discover available locations and feature sets
+### 6) Discover available locations and feature sets
 
 ```bash
 dtctl get gcp monitoring-locations
 dtctl get gcp monitoring-feature-sets
 ```
 
-### 6) Update GCP monitoring config (examples)
+### 7) Update GCP monitoring config (examples)
 
 Change location filtering to two regions:
 
@@ -2919,7 +2940,7 @@ dtctl create gcp monitoring --name "my-gcp-monitoring-explicit" \
   --featureSets "compute_engine_essential,cloud_run_essential"
 ```
 
-### 7) Delete by name or ID
+### 8) Delete by name or ID
 
 ```bash
 dtctl delete gcp monitoring my-gcp-monitoring
@@ -3055,47 +3076,6 @@ value:
   featureSets:
     - host_performance
 ```
-
----
-
-## Hub Catalog
-
-Browse the Dynatrace Hub extension catalog to discover available extensions before installing them. All Hub commands are read-only.
-
-### Browse Hub Extensions
-
-```bash
-# List all available extensions in the Hub
-dtctl get hub-extensions
-
-# Filter by keyword (case-insensitive, matches name, ID, or description)
-dtctl get hub-extensions --filter kafka
-
-# Wide output (includes description column)
-dtctl get hub-extensions -o wide
-
-# Get a specific Hub extension by ID
-dtctl get hub-extensions com.dynatrace.extension.host-monitoring
-
-# Describe a Hub extension
-dtctl describe hub-extensions com.dynatrace.extension.host-monitoring
-
-# Output as JSON
-dtctl describe hub-extensions com.dynatrace.extension.host-monitoring -o json
-```
-
-### View Extension Releases
-
-```bash
-# List all releases for a Hub extension
-dtctl get hub-extension-releases com.dynatrace.extension.host-monitoring
-
-# Output as JSON or YAML
-dtctl get hub-extension-releases com.dynatrace.extension.host-monitoring -o json
-dtctl get hub-extension-releases com.dynatrace.extension.host-monitoring -o yaml
-```
-
-**Required Token Scopes:** The Hub catalog API uses the same `extensions:definitions:read` scope as the installed extensions API. See [TOKEN_SCOPES.md](TOKEN_SCOPES.md) for complete scope reference.
 
 ---
 
@@ -3634,7 +3614,7 @@ Before diving into manual troubleshooting, run the built-in health check:
 dtctl doctor
 ```
 
-This runs 8 sequential checks — version, config, context, URL validation, token storage, token, connectivity, and authentication — and reports pass/fail with actionable suggestions for each.
+This runs 6 sequential checks — version, config, context, token, connectivity, and authentication — and reports pass/fail with actionable suggestions for each.
 
 ### Understanding Error Messages
 
@@ -3696,51 +3676,6 @@ This is useful for:
 - Verifying request parameters
 - Checking response format
 - Troubleshooting performance issues
-
-### Keyring Issues on Linux/WSL
-
-If `dtctl doctor` shows a keyring warning or `dtctl auth login` fails with a keyring error, the persistent keyring collection may not exist yet. Run:
-
-```bash
-dtctl auth login --context my-env --environment "https://YOUR_ENV.apps.dynatrace.com"
-```
-
-dtctl will detect the missing collection and offer to create it automatically — you may be prompted for a password.
-
-If automatic creation fails:
-- Ensure a Secret Service provider is running: `gnome-keyring-daemon --start --components=secrets`
-- Or switch to token-based authentication (see Option 2 above)
-- To disable keyring entirely: `export DTCTL_DISABLE_KEYRING=1`
-
-### File-Based Token Storage
-
-For headless environments without an OS keyring (CI/CD, containers, WSL, remote SSH), dtctl supports file-based OAuth token storage as a fallback:
-
-```bash
-# Enable file-based storage
-export DTCTL_TOKEN_STORAGE=file
-
-# Then use OAuth login normally
-dtctl auth login --context my-env --environment "https://abc12345.apps.dynatrace.com"
-
-# Verify storage backend with doctor
-dtctl doctor
-# Token storage: [OK] file-based storage (DTCTL_TOKEN_STORAGE=file)
-```
-
-**How it works:**
-- Tokens are stored as JSON files under `$XDG_DATA_HOME/dtctl/oauth-tokens/` (typically `~/.local/share/dtctl/oauth-tokens/` on Linux, `~/Library/Application Support/dtctl/oauth-tokens/` on macOS)
-- Files are created with `0600` permissions (owner-only read/write)
-- The directory is created with `0700` permissions
-- Token refresh works identically to keyring storage
-
-**When to use:**
-- Docker containers or CI/CD pipelines where no Secret Service is running
-- WSL environments without `gnome-keyring-daemon`
-- Headless Linux servers (SSH sessions)
-- Any environment where `dtctl doctor` reports keyring unavailable
-
-**Security note:** File-based storage keeps tokens on disk in plain JSON (with filesystem permissions as the security boundary). This is comparable to how `kubectl` stores tokens in `~/.kube/config`. For higher security, prefer the OS keyring when available.
 
 ### "config file not found"
 

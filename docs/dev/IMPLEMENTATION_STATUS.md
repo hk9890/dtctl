@@ -1,6 +1,6 @@
 # dtctl Implementation Status
 
-Last Updated: April 2026
+Last Updated: March 2026
 
 ## Overview
 
@@ -20,7 +20,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Shell completion (bash, zsh, fish)
 - [x] Automatic pagination with `--chunk-size` (default 500)
 - [x] User identity: `dtctl auth whoami` (via metadata API with JWT fallback)
-- [x] OS keychain integration for secure token storage (with automatic collection creation on Linux/WSL)
+- [x] OS keychain integration for secure token storage
 - [x] Command aliases: simple, parameterized ($1-$9), and shell aliases (with import/export)
 - [x] AI agent detection in User-Agent header for telemetry
 - [x] Agent output envelope (`--agent` / `-A`) with auto-detection, structured errors, and per-command context enrichment
@@ -35,7 +35,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] `create` - Create from manifest
 - [x] `delete` - Delete resources
 - [x] `edit` - Edit in $EDITOR
-- [x] `apply` - Create or update (with pre-apply hook support)
+- [x] `apply` - Create or update
 - [x] `diff` - Compare resources (local vs remote, file vs file, resource vs resource)
 - [x] `exec` - Execute workflows, analyzers, copilot, functions, SLOs
 - [x] `logs` - View execution logs
@@ -46,7 +46,7 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] `share/unshare` - Share dashboards and notebooks
 - [x] `alias` - Manage command aliases (set, list, delete, import, export)
 - [x] `ctx` - Quick context management (list, switch, describe, set, delete)
-- [x] `doctor` - Health check (config, context, URL validation, keyring, token, connectivity, auth)
+- [x] `doctor` - Health check (config, context, token, connectivity, auth)
 - [x] `commands` - Machine-readable command catalog (JSON/YAML, `--brief`, resource filter, `howto` subcommand)
 - [x] `skills` - AI agent skill file management (install, uninstall, status for Claude, Copilot, Cursor, Kiro, Junie, OpenCode, OpenClaw; cross-client via `--cross-client`)
 
@@ -79,19 +79,17 @@ This document tracks the current implementation status of dtctl. For future plan
 | intent | ✅ | ✅ | - | - | - | - |
 | segment | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | anomaly-detector | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| hub-extension | ✅ | ✅ | - | - | - | - |
-| hub-extension-releases | ✅ | - | - | - | - | - |
 
 #### Cloud Connections
 
 | Resource | get | describe | create | delete | apply |
 |----------|-----|----------|--------|--------|-------|
 | azure connection | ✅ | ✅ | ✅ | ✅ | ✅ |
-| azure monitoring | ✅ | ✅ | ✅ | ✅ | ✅ |
+| azure monitoring | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ enable |
 | aws connection | - | - | - | - | - |
 | aws monitoring | - | - | - | - | - |
 | gcp connection (Preview) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| gcp monitoring (Preview) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gcp monitoring (Preview) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ enable |
 
 #### Advanced Operations
 
@@ -113,8 +111,6 @@ This document tracks the current implementation status of dtctl. For future plan
 | copilot | - | ✅ | - | - | - | - | - | - |
 | segment | - | - | - | - | - | - | - | ✅ |
 | anomaly-detector | - | - | - | - | - | - | - | - |
-| hub-extension | - | - | - | - | - | - | - | - |
-| hub-extension-releases | - | - | - | - | - | - | - | - |
 
 ### Watch Mode Features
 - [x] Watch all `get` commands: `dtctl get workflows --watch`
@@ -191,13 +187,6 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Recent problems cross-reference via DQL in describe output
 - [x] Template variables: `--set threshold=95`
 
-### Hub Catalog Features
-- [x] List Hub extensions: `dtctl get hub-extensions` (alias: `hub-extension`)
-- [x] Filter by name, ID, or description: `dtctl get hub-extensions --filter <substring>` (client-side)
-- [x] Get a specific extension: `dtctl get hub-extensions <id>`
-- [x] Describe extension details: `dtctl describe hub-extensions <id>`
-- [x] List releases for an extension: `dtctl get hub-extension-releases <id>`
-
 ### App Functions Features
 - [x] List all functions: `dtctl get functions`
 - [x] Filter by app: `dtctl get functions --app <app-id>`
@@ -223,7 +212,8 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Get by description or ID: `dtctl get azure monitoring <description-or-id>`
 - [x] Describe config: `dtctl describe azure monitoring <id-or-name>`
 - [x] Runtime status in describe (Smartscape, metrics, recent events)
-- [x] Create config: `dtctl create azure monitoring --name <name> --credentials <connection-name-or-id>`
+- [x] Create config (created as disabled): `dtctl create azure monitoring --name <name> --credentials <connection-name-or-id>`
+- [x] Enable config (update connection + enable): `dtctl enable azure monitoring --name <name> [--directoryId <tenant-id>] [--applicationId <client-id>]`
 - [x] Update config: `dtctl update azure monitoring --name <name> [--locationFiltering ...] [--featureSets ...]`
 - [x] Delete by name or ID: `dtctl delete azure monitoring <name-or-id>`
 - [x] Apply from manifest (idempotent): `dtctl apply -f azure_monitoring_config.yaml`
@@ -260,7 +250,8 @@ This document tracks the current implementation status of dtctl. For future plan
 - [x] Get by description or ID: `dtctl get gcp monitoring <description-or-id>`
 - [x] Describe config: `dtctl describe gcp monitoring <id-or-name>`
 - [x] Runtime status in describe (Smartscape, metrics, recent events)
-- [x] Create config: `dtctl create gcp monitoring --name <name> --credentials <connection-name-or-id>`
+- [x] Create config (created as disabled): `dtctl create gcp monitoring --name <name> --credentials <connection-name-or-id>`
+- [x] Enable config (update connection + enable): `dtctl enable gcp monitoring --name <name> [--serviceAccountId <email>]`
 - [x] Update config: `dtctl update gcp monitoring --name <name> [--locationFiltering ...] [--featureSets ...]`
 - [x] Delete by name or ID: `dtctl delete gcp monitoring <name-or-id>`
 - [x] Apply from manifest (idempotent): `dtctl apply -f gcp_monitoring_config.yaml`
