@@ -11,10 +11,13 @@
 $ErrorActionPreference = 'Stop'
 
 # Determine architecture
-$arch = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') {
-    'arm64'
-} else {
-    'amd64'
+$arch = 'amd64'
+try {
+    if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') {
+        $arch = 'arm64'
+    }
+} catch {
+    # Fallback for older .NET frameworks where RuntimeInformation is unavailable
 }
 
 $repoOwner = 'dynatrace-oss'
@@ -40,30 +43,67 @@ if (-not $asset) {
 
 $downloadUrl = $asset.browser_download_url
 
+# Resolve an existing path to its canonical long form to avoid 8.3 short-name issues
+# (e.g. C:\Users\LONGUS~1\...). Returns the path unchanged if it doesn't exist.
+function Resolve-LongPath {
+    param([string]$Path)
+    try {
+        if (Test-Path $Path) {
+            return (Get-Item $Path).FullName
+        }
+        # For paths that don't exist yet, resolve the parent directory
+        $parent = Split-Path $Path -Parent
+        $leaf = Split-Path $Path -Leaf
+        if ($parent -and (Test-Path $parent)) {
+            return Join-Path (Get-Item $parent).FullName $leaf
+        }
+    } catch {
+        Write-Debug "Resolve-LongPath: could not resolve '$Path': $_"
+    }
+    return $Path
+}
+
 # Install directory
 $installDir = Join-Path $env:LOCALAPPDATA 'dtctl'
 if (-not (Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 }
+$installDir = Resolve-LongPath $installDir
 
 # Download and extract
-$tempZip = Join-Path $env:TEMP "dtctl-$tag.zip"
+$tempDir = Resolve-LongPath $env:TEMP
+$tempZip = Join-Path $tempDir "dtctl-$tag.zip"
 Write-Host "Downloading $($asset.name)..." -ForegroundColor Cyan
 Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
 Write-Host "Extracting to $installDir..." -ForegroundColor Cyan
 Expand-Archive -Path $tempZip -DestinationPath $installDir -Force
-Remove-Item $tempZip -Force
 
-# Verify the binary exists
+# Clean up temp file (non-fatal — don't fail the install over temp cleanup)
+try { Remove-Item $tempZip -Force -ErrorAction SilentlyContinue } catch {}
+
+# Verify the binary exists (check for nested directory from zip structure)
 $exePath = Join-Path $installDir 'dtctl.exe'
+if (-not (Test-Path $exePath)) {
+    # Some zip tools create a nested folder — look one level deeper
+    $nested = Get-ChildItem -Path $installDir -Filter 'dtctl.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($nested) {
+        # Move all files from nested directory to install root
+        $nestedDir = $nested.DirectoryName
+        Get-ChildItem -Path $nestedDir | Move-Item -Destination $installDir -Force -ErrorAction SilentlyContinue
+        Remove-Item $nestedDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 if (-not (Test-Path $exePath)) {
     Write-Error "dtctl.exe not found in $installDir after extraction."
     exit 1
 }
 
 # Add to PATH if not already present
+# Resolve existing PATH entries to long paths before comparing, so an 8.3 short-path
+# entry already in PATH doesn't cause the long-path version to be added as a duplicate.
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if ($userPath -notlike "*$installDir*") {
+$resolvedEntries = $userPath -split ';' | ForEach-Object { Resolve-LongPath $_ }
+if ($installDir -notin $resolvedEntries) {
     [Environment]::SetEnvironmentVariable('Path', "$userPath;$installDir", 'User')
     $env:Path = "$env:Path;$installDir"
     Write-Host "Added $installDir to user PATH." -ForegroundColor Green

@@ -47,7 +47,7 @@ To update, re-run the same command.
 irm https://raw.githubusercontent.com/dynatrace-oss/dtctl/main/install.ps1 | iex
 ```
 
-This downloads the latest release, extracts it to `%LOCALAPPDATA%\dtctl`, and adds it to your PATH. Restart your terminal afterwards.
+This downloads the latest release, extracts it to `%LOCALAPPDATA%\dtctl`, and adds it to your PATH. Restart your terminal (or IDE) afterwards for the PATH change to take effect.
 
 For detailed steps, manual install, PowerShell tips, quoting, and troubleshooting, see the dedicated [Windows installation guide](WINDOWS.md).
 
@@ -307,6 +307,19 @@ sudo cp bin/dtctl /usr/local/bin/
 ## Uninstalling
 
 To remove dtctl:
+
+### Windows (PowerShell)
+
+```powershell
+# Remove binary + PATH entry
+irm https://raw.githubusercontent.com/dynatrace-oss/dtctl/main/uninstall.ps1 | iex
+
+# Optional: full cleanup (config/cache/data)
+irm https://raw.githubusercontent.com/dynatrace-oss/dtctl/main/uninstall.ps1 -OutFile uninstall-dtctl.ps1
+.\uninstall-dtctl.ps1 -RemoveConfig -RemoveCache -RemoveData
+```
+
+### macOS/Linux
 
 ```bash
 # If installed via Homebrew
