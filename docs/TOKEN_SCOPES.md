@@ -23,6 +23,8 @@ For creating platform tokens, see [Dynatrace Platform Tokens documentation](http
 
 Read-only access for production monitoring and troubleshooting.
 
+This level does not include the Live Debugger write scope `dev-obs:breakpoints:set`.
+
 ```
 document:documents:read,
 document:direct-shares:read,
@@ -76,6 +78,7 @@ document:trash.documents:restore,
 automation:workflows:read,
 automation:workflows:write,
 automation:workflows:run,
+dev-obs:breakpoints:set,
 slo:slos:read,
 slo:slos:write,
 slo:objective-templates:read,
@@ -131,6 +134,7 @@ document:trash.documents:restore,
 automation:workflows:read,
 automation:workflows:write,
 automation:workflows:run,
+dev-obs:breakpoints:set,
 slo:slos:read,
 slo:slos:write,
 slo:objective-templates:read,
@@ -206,6 +210,7 @@ document:trash.documents:delete,
 automation:workflows:read,
 automation:workflows:write,
 automation:workflows:run,
+dev-obs:breakpoints:set,
 slo:slos:read,
 slo:slos:write,
 slo:objective-templates:read,
@@ -395,6 +400,13 @@ email:emails:send
 |-------|-------------|
 | `notification:notifications:read` | Read notification configurations |
 | `notification:notifications:write` | Create/update notification configurations |
+
+### Live Debugger
+| Scope | Description |
+|-------|-------------|
+| `dev-obs:breakpoints:set` | Create, update, and delete Live Debugger breakpoints |
+
+`dev-obs:breakpoints:set` is not included in the `readonly` safety level.
 
 ### IAM
 
