@@ -65,6 +65,16 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 			resultID = "(ID not returned)"
 		}
 
+		if opts.WriteID && resultID != "(ID not returned)" {
+			if err := writeIDToFile(a.sourceFile, resultID); err != nil {
+				stderrWarn(&resultWarnings, "could not write ID back to file: %v", err)
+			} else if a.sourceFile != "" {
+				fmt.Fprintf(os.Stderr, "Wrote id %s to %s\n", resultID, a.sourceFile)
+			}
+		} else {
+			printWriteIDHint(a.sourceFile, resultID, docType)
+		}
+
 		return a.buildDocumentResult(ActionCreated, docType, resultID, resultName, tileCount, resultWarnings), nil
 	}
 
@@ -108,6 +118,16 @@ func (a *Applier) applyDocument(data []byte, docType string, opts ApplyOptions) 
 		resultID := result.ID
 		if resultID == "" {
 			resultID = id
+		}
+
+		if opts.WriteID {
+			if err := writeIDToFile(a.sourceFile, resultID); err != nil {
+				stderrWarn(&resultWarnings, "could not write ID back to file: %v", err)
+			} else if a.sourceFile != "" {
+				fmt.Fprintf(os.Stderr, "Wrote id %s to %s\n", resultID, a.sourceFile)
+			}
+		} else {
+			printWriteIDHint(a.sourceFile, resultID, docType)
 		}
 
 		return a.buildDocumentResult(ActionCreated, docType, resultID, resultName, tileCount, resultWarnings), nil

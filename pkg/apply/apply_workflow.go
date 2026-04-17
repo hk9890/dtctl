@@ -3,13 +3,14 @@ package apply
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/dynatrace-oss/dtctl/pkg/resources/workflow"
 	"github.com/dynatrace-oss/dtctl/pkg/safety"
 )
 
 // applyWorkflow applies a workflow resource
-func (a *Applier) applyWorkflow(data []byte) (ApplyResult, error) {
+func (a *Applier) applyWorkflow(data []byte, opts ApplyOptions) (ApplyResult, error) {
 	// Parse to check for ID
 	var wf map[string]interface{}
 	if err := json.Unmarshal(data, &wf); err != nil {
@@ -30,12 +31,25 @@ func (a *Applier) applyWorkflow(data []byte) (ApplyResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create workflow: %w", err)
 		}
+
+		var warnings []string
+		if opts.WriteID && result.ID != "" {
+			if err := writeIDToFile(a.sourceFile, result.ID); err != nil {
+				stderrWarn(&warnings, "could not write ID back to file: %v", err)
+			} else if a.sourceFile != "" {
+				fmt.Fprintf(os.Stderr, "Wrote id %s to %s\n", result.ID, a.sourceFile)
+			}
+		} else {
+			printWriteIDHint(a.sourceFile, result.ID, "workflow")
+		}
+
 		return &WorkflowApplyResult{
 			ApplyResultBase: ApplyResultBase{
 				Action:       ActionCreated,
 				ResourceType: "workflow",
 				ID:           result.ID,
 				Name:         result.Title,
+				Warnings:     warnings,
 			},
 		}, nil
 	}
@@ -53,12 +67,25 @@ func (a *Applier) applyWorkflow(data []byte) (ApplyResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create workflow: %w", err)
 		}
+
+		var warnings []string
+		if opts.WriteID && result.ID != "" {
+			if err := writeIDToFile(a.sourceFile, result.ID); err != nil {
+				stderrWarn(&warnings, "could not write ID back to file: %v", err)
+			} else if a.sourceFile != "" {
+				fmt.Fprintf(os.Stderr, "Wrote id %s to %s\n", result.ID, a.sourceFile)
+			}
+		} else {
+			printWriteIDHint(a.sourceFile, result.ID, "workflow")
+		}
+
 		return &WorkflowApplyResult{
 			ApplyResultBase: ApplyResultBase{
 				Action:       ActionCreated,
 				ResourceType: "workflow",
 				ID:           result.ID,
 				Name:         result.Title,
+				Warnings:     warnings,
 			},
 		}, nil
 	}
