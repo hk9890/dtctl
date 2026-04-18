@@ -75,7 +75,7 @@ func buildSessionStatus(contextName string, ctx *config.Context, tokenName strin
 	oauthConfig := auth.OAuthConfigFromEnvironmentURLWithSafety(ctx.Environment, ctx.SafetyLevel)
 	tokenManager, err := auth.NewTokenManager(oauthConfig)
 	if err != nil {
-		return status, nil
+		return nil, err
 	}
 
 	stored, err := tokenManager.GetTokenInfo(tokenName)
@@ -231,14 +231,12 @@ OAuth-specific fields.`,
 			return fmt.Errorf("failed to build session status: %w", err)
 		}
 
-		printer := NewPrinter()
-
 		if outputFormat == "table" || outputFormat == "" {
 			printSessionStatusTable(status)
 			return nil
 		}
 
-		return printer.Print(status)
+		return NewPrinter().Print(status)
 	},
 }
 
@@ -304,7 +302,7 @@ func refreshTokenSummary(status *SessionStatus) string {
 	if status.RefreshTokenExpiresAt == nil {
 		return "present"
 	}
-	remaining := time.Until(*status.RefreshTokenExpiresAt).Round(time.Hour)
+	remaining := time.Until(*status.RefreshTokenExpiresAt).Round(time.Second)
 	if remaining > 0 {
 		return fmt.Sprintf("valid for %s (expires %s)",
 			remaining, status.RefreshTokenExpiresAt.Format(time.RFC3339))

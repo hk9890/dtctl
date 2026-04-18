@@ -333,12 +333,7 @@ func DecodeRefreshTokenExpiry(refreshToken string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 
-	payload := parts[1]
-	if pad := len(payload) % 4; pad > 0 {
-		payload += strings.Repeat("=", 4-pad)
-	}
-
-	decoded, err := base64.URLEncoding.DecodeString(payload)
+	decoded, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return time.Time{}, false
 	}
