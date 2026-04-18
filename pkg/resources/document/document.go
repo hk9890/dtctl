@@ -935,17 +935,47 @@ func (h *Handler) DeleteEnvironmentShare(shareID string) error {
 	return nil
 }
 
-// EnsureEnvironmentShare idempotently ensures the document has an environment share at the given access level.
-// - If no share exists, creates one.
-// - If a share exists and grants the requested level, no-op.
-// - If a share exists but grants a different level, deletes it and creates a new one.
+// SetDocumentPublic flips a document's isPrivate flag to false, making it discoverable
+// to everyone in the environment via the Notebooks/Dashboards app's listing. Requires
+// the current document version for optimistic-locking. Uses the documents PATCH endpoint
+// with a multipart form body (the same shape content updates use).
 //
-// Note on the `isPrivate` flag: creating an environment share does NOT by itself flip
-// the document's `isPrivate: false` flag. The flag reflects whether some OTHER user
-// has *claimed* the share (there's a server-side restriction: the owner cannot claim
-// their own document). In practice the share is still discoverable via
-// /environment-shares?filter=documentId=='<id>' and any user in the environment can
-// claim it; the owner's own view keeps showing isPrivate=true until someone else does.
+// This is the half of the "Share with environment" UI action that the environment-share
+// API does not cover: the env-share creates a claimable grant, but isPrivate=false is a
+// separate owner-settable metadata flag.
+func (h *Handler) SetDocumentPublic(id string, version int) error {
+	resp, err := h.client.HTTP().R().
+		SetQueryParam("optimistic-locking-version", fmt.Sprintf("%d", version)).
+		SetMultipartFormData(map[string]string{"isPrivate": "false"}).
+		Patch(fmt.Sprintf("/platform/document/v1/documents/%s", id))
+	if err != nil {
+		return fmt.Errorf("failed to update document visibility: %w", err)
+	}
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 404:
+			return fmt.Errorf("document %q not found", id)
+		case 403:
+			return fmt.Errorf("access denied to update document %q", id)
+		case 409:
+			return fmt.Errorf("document version conflict (document was modified)")
+		default:
+			return fmt.Errorf("failed to update document visibility: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+	return nil
+}
+
+// EnsureEnvironmentShare idempotently ensures the document has an environment share at the given
+// access level, AND that the document itself is marked public (isPrivate=false). The two are
+// complementary: the share is a per-user claimable grant, isPrivate=false is the
+// metadata flag that makes the document discoverable in the app's listing. Together they
+// reproduce the UI's "Share with environment" action.
+//
+// Idempotency:
+// - If a share at the requested level already exists, reuses it.
+// - If a share at a different level exists, deletes and replaces it.
+// - If isPrivate is already false, the visibility PATCH is still sent (server treats as no-op).
 //
 // Returns the current (or newly-created) share.
 func (h *Handler) EnsureEnvironmentShare(documentID, access string) (*EnvironmentShare, error) {
@@ -953,19 +983,38 @@ func (h *Handler) EnsureEnvironmentShare(documentID, access string) (*Environmen
 	if err != nil {
 		return nil, err
 	}
+	var share *EnvironmentShare
 	for i := range existing.Shares {
 		s := existing.Shares[i]
 		if s.HasAccess(access) {
-			return &s, nil
+			share = &s
+			break
 		}
 		if err := h.DeleteEnvironmentShare(s.ID); err != nil {
 			return nil, fmt.Errorf("failed to replace existing environment share: %w", err)
 		}
 	}
-	return h.CreateEnvironmentShare(CreateEnvironmentShareRequest{
-		DocumentID: documentID,
-		Access:     access,
-	})
+	if share == nil {
+		created, err := h.CreateEnvironmentShare(CreateEnvironmentShareRequest{
+			DocumentID: documentID,
+			Access:     access,
+		})
+		if err != nil {
+			return nil, err
+		}
+		share = created
+	}
+	// Flip the document to public. Fetch current version for optimistic locking.
+	meta, err := h.GetMetadata(documentID)
+	if err != nil {
+		return share, fmt.Errorf("share created but could not read document metadata to flip isPrivate: %w", err)
+	}
+	if meta.IsPrivate {
+		if err := h.SetDocumentPublic(documentID, meta.Version); err != nil {
+			return share, err
+		}
+	}
+	return share, nil
 }
 
 // MarshalJSON custom marshaler for Document to include content when present
