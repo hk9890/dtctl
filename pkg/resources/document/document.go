@@ -800,6 +800,127 @@ func (h *Handler) RemoveDirectShareRecipients(shareID string, recipientIDs []str
 	return nil
 }
 
+// EnvironmentShare represents an environment-wide share for a document
+// (a document shared with everyone in the environment, reflected as isPrivate=false on the document).
+type EnvironmentShare struct {
+	ID         string `json:"id" table:"ID"`
+	DocumentID string `json:"documentId" table:"DOCUMENT_ID"`
+	Access     string `json:"access" table:"ACCESS"`
+}
+
+// EnvironmentShareList represents a list of environment shares
+type EnvironmentShareList struct {
+	Shares      []EnvironmentShare `json:"environmentShares"`
+	TotalCount  int                `json:"totalCount"`
+	NextPageKey string             `json:"nextPageKey,omitempty"`
+}
+
+// CreateEnvironmentShareRequest contains the data needed to create an environment share
+type CreateEnvironmentShareRequest struct {
+	DocumentID string `json:"documentId"`
+	Access     string `json:"access"` // "read" or "read-write"
+}
+
+// CreateEnvironmentShare creates an environment-wide share for a document
+func (h *Handler) CreateEnvironmentShare(req CreateEnvironmentShareRequest) (*EnvironmentShare, error) {
+	var result EnvironmentShare
+
+	resp, err := h.client.HTTP().R().
+		SetBody(req).
+		SetResult(&result).
+		Post("/platform/document/v1/environment-shares")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create environment share: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 404:
+			return nil, fmt.Errorf("document %q not found", req.DocumentID)
+		case 403:
+			return nil, fmt.Errorf("access denied to share document %q with environment", req.DocumentID)
+		case 409:
+			return nil, fmt.Errorf("an environment share already exists for document %q", req.DocumentID)
+		default:
+			return nil, fmt.Errorf("failed to create environment share: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	return &result, nil
+}
+
+// ListEnvironmentShares lists environment shares for a document (or all if documentID is empty)
+func (h *Handler) ListEnvironmentShares(documentID string) (*EnvironmentShareList, error) {
+	var result EnvironmentShareList
+
+	req := h.client.HTTP().R().SetResult(&result)
+
+	if documentID != "" {
+		req.SetQueryParam("filter", fmt.Sprintf("documentId=='%s'", documentID))
+	}
+
+	resp, err := req.Get("/platform/document/v1/environment-shares")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list environment shares: %w", err)
+	}
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("failed to list environment shares: status %d: %s", resp.StatusCode(), resp.String())
+	}
+
+	return &result, nil
+}
+
+// DeleteEnvironmentShare deletes an environment share
+func (h *Handler) DeleteEnvironmentShare(shareID string) error {
+	resp, err := h.client.HTTP().R().
+		Delete(fmt.Sprintf("/platform/document/v1/environment-shares/%s", shareID))
+
+	if err != nil {
+		return fmt.Errorf("failed to delete environment share: %w", err)
+	}
+
+	if resp.IsError() {
+		switch resp.StatusCode() {
+		case 404:
+			return fmt.Errorf("environment share %q not found", shareID)
+		case 403:
+			return fmt.Errorf("access denied to delete environment share %q", shareID)
+		default:
+			return fmt.Errorf("failed to delete environment share: status %d: %s", resp.StatusCode(), resp.String())
+		}
+	}
+
+	return nil
+}
+
+// EnsureEnvironmentShare idempotently ensures the document has an environment share at the given access level.
+// - If no share exists, creates one.
+// - If a share exists at the same access level, no-op.
+// - If a share exists at a different access level, deletes it and creates a new one.
+// Returns the current (or newly-created) share.
+func (h *Handler) EnsureEnvironmentShare(documentID, access string) (*EnvironmentShare, error) {
+	existing, err := h.ListEnvironmentShares(documentID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range existing.Shares {
+		s := existing.Shares[i]
+		if s.Access == access {
+			return &s, nil
+		}
+		if err := h.DeleteEnvironmentShare(s.ID); err != nil {
+			return nil, fmt.Errorf("failed to replace existing environment share: %w", err)
+		}
+	}
+	return h.CreateEnvironmentShare(CreateEnvironmentShareRequest{
+		DocumentID: documentID,
+		Access:     access,
+	})
+}
+
 // MarshalJSON custom marshaler for Document to include content when present
 func (d Document) MarshalJSON() ([]byte, error) {
 	type Alias Document
