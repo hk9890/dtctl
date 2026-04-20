@@ -205,7 +205,14 @@ func runDoctorChecksWithClient(httpClient *http.Client) []checkResult {
 	})
 
 	// OAuth session state (only applies when the stored token is OAuth)
-	if session, sessionErr := buildSessionStatusFunc(cfg.CurrentContext, ctx, ctx.TokenRef); sessionErr == nil && session.IsOAuth {
+	session, sessionErr := buildSessionStatusFunc(cfg.CurrentContext, ctx, ctx.TokenRef)
+	if sessionErr != nil {
+		results = append(results, checkResult{
+			Name:   "OAuth session",
+			Status: "fail",
+			Detail: fmt.Sprintf("could not read session state: %s", sessionErr.Error()),
+		})
+	} else if session.IsOAuth {
 		results = append(results, oauthSessionCheckResult(session))
 	}
 

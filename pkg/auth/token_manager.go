@@ -77,8 +77,8 @@ func (tm *TokenManager) GetToken(tokenName string) (string, error) {
 		return "", err
 	}
 
-	// If only refresh token is stored (compact keyring format), refresh immediately
-	if stored.AccessToken == "" && stored.RefreshToken != "" {
+	// If only refresh token is stored (minimal compact keyring format, no expiry), refresh immediately
+	if stored.AccessToken == "" && stored.RefreshToken != "" && stored.ExpiresAt.IsZero() {
 		refreshed, err := tm.RefreshToken(tokenName)
 		if err != nil {
 			return "", fmt.Errorf("failed to refresh token from compact storage: %w", err)

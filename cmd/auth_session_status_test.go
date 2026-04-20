@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -168,6 +169,67 @@ func TestDoctor_OAuthSessionRow_SkippedForPlatformToken(t *testing.T) {
 		if r.Name == "OAuth session" {
 			t.Errorf("did not expect 'OAuth session' row for platform token, got %q: %s", r.Status, r.Detail)
 		}
+	}
+}
+
+func TestDoctor_OAuthSessionRow_FailWhenSessionError(t *testing.T) {
+	// Stub buildSessionStatusFunc to return an error (e.g. keyring unavailable)
+	original := buildSessionStatusFunc
+	buildSessionStatusFunc = func(contextName string, ctx *config.Context, tokenName string) (*SessionStatus, error) {
+		return nil, errors.New("keyring unavailable")
+	}
+	t.Cleanup(func() { buildSessionStatusFunc = original })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodHead:
+			w.WriteHeader(http.StatusOK)
+		case r.URL.Path == "/platform/metadata/v1/user":
+			resp := map[string]interface{}{
+				"userId":       "test-user-id",
+				"emailAddress": "test@example.com",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	originalCfgFile := cfgFile
+	defer func() { cfgFile = originalCfgFile }()
+	cfgFile = configPath
+
+	cfg := config.NewConfig()
+	cfg.SetContext("test", server.URL, "test-oauth")
+	if err := cfg.SetToken("test-oauth", "dt0c01.ST.test-token-value.test-secret"); err != nil {
+		t.Fatalf("failed to set token: %v", err)
+	}
+	cfg.CurrentContext = "test"
+	if err := cfg.SaveTo(configPath); err != nil {
+		t.Fatalf("failed to save config: %v", err)
+	}
+
+	results := runDoctorChecks()
+
+	found := false
+	for _, r := range results {
+		if r.Name == "OAuth session" {
+			found = true
+			if r.Status != "fail" {
+				t.Errorf("expected OAuth session fail, got %q (detail: %s)", r.Status, r.Detail)
+			}
+			if !strings.Contains(r.Detail, "keyring unavailable") {
+				t.Errorf("expected detail to contain error message, got %q", r.Detail)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected 'OAuth session' fail row in doctor output when buildSessionStatus errors")
 	}
 }
 
