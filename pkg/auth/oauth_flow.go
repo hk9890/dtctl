@@ -110,6 +110,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"davis:analyzers:read",
 			"app-engine:apps:run",
 			"app-engine:edge-connects:read",
+			"hub:catalog:read",
 		}
 
 	case config.SafetyLevelReadWriteMine:
@@ -162,6 +163,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:read",
 			"email:emails:send",
 			"dev-obs:breakpoints:set",
+			"hub:catalog:read",
 		}
 
 	case config.SafetyLevelReadWriteAll:
@@ -232,6 +234,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:write",
 			"email:emails:send",
 			"dev-obs:breakpoints:set",
+			"hub:catalog:read",
 		}
 
 	case config.SafetyLevelDangerouslyUnrestricted:
@@ -310,6 +313,7 @@ func GetScopesForSafetyLevel(level config.SafetyLevel) []string {
 			"app-engine:edge-connects:delete",
 			"email:emails:send",
 			"dev-obs:breakpoints:set",
+			"hub:catalog:read",
 		}
 
 	default:
