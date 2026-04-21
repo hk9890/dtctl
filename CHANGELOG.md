@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-04-21
+
 ### Fixed
 - **`apply` now accepts array input for bulk resource updates** — `dtctl apply -f` can now process files containing arrays of resources (e.g., the output of `dtctl get settings --schema ... -o yaml`); each element is applied individually with per-item error reporting so a single failure does not abort the batch; works for all resource types, not just settings; fixes [#180](https://github.com/dynatrace-oss/dtctl/issues/180)
 
@@ -392,6 +394,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated Go version to 1.24.13 in security workflow
 
+[0.25.1]: https://github.com/dynatrace-oss/dtctl/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/dynatrace-oss/dtctl/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/dynatrace-oss/dtctl/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/dynatrace-oss/dtctl/compare/v0.22.0...v0.23.0
