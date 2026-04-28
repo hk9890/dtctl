@@ -201,6 +201,40 @@ func TestWatcher_ShowInitial_PrintsThenSeedsBaseline(t *testing.T) {
 	}
 }
 
+func TestWatcher_TransientError_HonoursContextDuringBackoff(t *testing.T) {
+	// Verify that context cancellation is honoured during the transient-error
+	// backoff sleep (i.e. sleep uses w.sleep, not time.Sleep).
+	call := 0
+	fetcher := func() (interface{}, error) {
+		call++
+		if call == 2 {
+			return nil, errors.New("connection timeout")
+		}
+		return []interface{}{}, nil
+	}
+
+	const interval = 50 * time.Millisecond
+	w := NewWatcher(WatcherOptions{
+		Interval: interval,
+		Fetcher:  fetcher,
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel mid-backoff: after initial poll + first ticker + a bit into backoff sleep.
+	go func() {
+		time.Sleep(interval + 10*time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	_ = w.Start(ctx)
+	elapsed := time.Since(start)
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("watcher did not stop promptly on context cancel during transient backoff; took %v", elapsed)
+	}
+}
+
 func TestExtractRetryAfter(t *testing.T) {
 	tests := []struct {
 		name     string

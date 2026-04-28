@@ -45,6 +45,9 @@ func (w *Watcher) Start(ctx context.Context) error {
 			if err := w.poll(ctx, false); err != nil {
 				if isTransient(err) {
 					log.Printf("Warning: Temporary error, retrying: %v\n", err)
+					if !w.sleep(ctx, w.interval) {
+						return nil
+					}
 					continue
 				}
 				if isRateLimited(err) {
