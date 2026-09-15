@@ -56,6 +56,18 @@ Examples:
 			return err
 		}
 
+		watchMode, _ := cmd.Flags().GetBool("watch")
+		if watchMode {
+			fetcher := func() (interface{}, error) {
+				list, err := handler.List(chunk, limit)
+				if err != nil {
+					return nil, err
+				}
+				return list.Results, nil
+			}
+			return executeWithWatch(cmd, fetcher, printer)
+		}
+
 		list, err := handler.List(chunk, limit)
 		if err != nil {
 			return err
@@ -139,6 +151,23 @@ Examples:
 			}
 		}
 
+		if dryRun {
+			if agentMode {
+				printer := NewPrinter()
+				ap := enrichAgent(printer, "delete", "scheduling-rule")
+				if ap != nil {
+					ap.SetSuggestions([]string{"Remove --dry-run to delete the scheduling rule"})
+				}
+				return printer.Print(map[string]string{
+					"id":     id,
+					"title":  rule.Title,
+					"status": "dry-run",
+				})
+			}
+			output.PrintInfo("Dry run: would delete scheduling rule %q (%s)", rule.Title, id)
+			return nil
+		}
+
 		if err := handler.Delete(id); err != nil {
 			return err
 		}
@@ -166,5 +195,6 @@ Examples:
 
 func init() {
 	getSchedulingRulesCmd.Flags().Int64("limit", 0, "Maximum number of scheduling rules to return (0 = unlimited)")
+	addWatchFlags(getSchedulingRulesCmd)
 	deleteSchedulingRuleCmd.Flags().BoolVarP(&forceDelete, "yes", "y", false, "Skip confirmation prompt")
 }

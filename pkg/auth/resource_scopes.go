@@ -67,7 +67,9 @@ var ResourceScopes = map[string]AccessScopes{
 	"workflow":           {Read: []string{"automation:workflows:read"}, Write: []string{"automation:workflows:write"}, Run: []string{"automation:workflows:run"}},
 	"workflow-execution": {Read: []string{"automation:workflows:read"}},
 	"wfe-task-result":    {Read: []string{"automation:workflows:read"}},
-	"scheduling-rule":    {Read: []string{"automation:rules:read"}, Write: []string{"automation:rules:write"}},
+	// Delete requires write (the DELETE endpoint) plus read (the pre-delete GET
+	// for ownership resolution). No separate delete scope exists in the API.
+	"scheduling-rule": {Read: []string{"automation:rules:read"}, Write: []string{"automation:rules:write"}, Delete: []string{"automation:rules:write", "automation:rules:read"}},
 
 	// Documents (dashboards / notebooks are Documents). Delete is a distinct
 	// scope (documents move to trash on delete).

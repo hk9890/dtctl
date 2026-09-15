@@ -61,10 +61,19 @@ Examples:
 		}
 
 		if dryRun {
-			fmt.Printf("Dry run: would create scheduling rule\n")
-			fmt.Println("---")
-			fmt.Println(string(jsonData))
-			fmt.Println("---")
+			printer := NewPrinter()
+			ap := enrichAgent(printer, "create", "scheduling-rule")
+			if ap != nil {
+				ap.SetSuggestions([]string{"Remove --dry-run to create the scheduling rule"})
+				return printer.Print(map[string]interface{}{
+					"dryRun":  true,
+					"content": string(jsonData),
+				})
+			}
+			output.PrintInfo("Dry run: would create scheduling rule")
+			output.PrintInfo("---")
+			output.PrintInfo("%s", string(jsonData))
+			output.PrintInfo("---")
 			return nil
 		}
 
@@ -80,6 +89,17 @@ Examples:
 			return fmt.Errorf("failed to create scheduling rule: %w", err)
 		}
 
+		if agentMode {
+			printer := NewPrinter()
+			ap := enrichAgent(printer, "create", "scheduling-rule")
+			if ap != nil {
+				ap.SetSuggestions([]string{
+					fmt.Sprintf("Run 'dtctl describe scheduling-rule %s' to view details", result.ID),
+					"Run 'dtctl get scheduling-rules' to list all rules",
+				})
+			}
+			return printer.Print(result)
+		}
 		output.PrintSuccess("Scheduling rule %q created", result.Title)
 		output.PrintInfo("  ID:    %s", result.ID)
 		output.PrintInfo("  Title: %s", result.Title)
