@@ -81,6 +81,7 @@ _mutating | access: write | safety: OperationCreate_
 | extension | `extensions:definitions:write` |
 | lookup | `storage:files:write` |
 | notebook | `document:documents:write` |
+| scheduling-rule | `automation:rules:write` |
 | segment | `storage:filter-segments:write` |
 | settings | `settings:objects:write` |
 | slo | `slo:slos:write` |
@@ -128,6 +129,7 @@ _mutating | access: delete | safety: OperationDelete_
 | lookup | `storage:files:delete` |
 | notebook | `document:documents:delete` |
 | notification | `notification:notifications:write` |
+| scheduling-rule | `automation:rules:write`, `automation:rules:read` |
 | segment | `storage:filter-segments:delete` |
 | settings | `settings:objects:write` |
 | slo | `slo:slos:write` |
@@ -168,6 +170,7 @@ _read-only | access: read_
 | intent | `app-engine:apps:run` |
 | lookup | `storage:files:read` |
 | notebook | `document:documents:read` |
+| scheduling-rule | `automation:rules:read` |
 | segment | `storage:filter-segments:read` |
 | settings | `settings:objects:read`, `app-settings:objects:read` |
 | settings-schema | `settings:schemas:read` |
@@ -327,6 +330,7 @@ _read-only | access: read_
 | lookups | `storage:files:read` |
 | notebooks | `document:documents:read` |
 | notifications | `notification:notifications:read` |
+| scheduling-rules | `automation:rules:read` |
 | sdk-versions | `app-engine:apps:run` |
 | segments | `storage:filter-segments:read` |
 | settings | `settings:objects:read`, `app-settings:objects:read` |

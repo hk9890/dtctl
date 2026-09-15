@@ -54,6 +54,7 @@
 | preview-processor |
 | query |
 | refresh |
+| scheduling-rule |
 | sdk-version |
 | set |
 | set-context |
