@@ -27,13 +27,16 @@ per-request deadlines are all still subject to change, so a released build does
 not expose the command until you ask for it:
 
 ```bash
-export DTCTL_EXPERIMENTAL_SERVE=1
-dtctl serve http
+dtctl config set development.serve on   # persistent
+DTCTL_DEVELOPMENT=serve dtctl serve http  # one process
 ```
 
-Without the variable, `dtctl serve` is an ordinary unknown command — it does not
-appear in `--help` or in the `dtctl commands` catalog. This mirrors
-`DTCTL_EXPERIMENTAL_ACCOUNT`. The gate covers the *command* only:
+Without the opt-in, `dtctl serve` is an ordinary unknown command — it does not
+appear in `--help` or in the `dtctl commands` catalog. That is the
+`development` tier's defining property; see
+[the stability manifest](https://github.com/dynatrace-oss/dtctl/blob/main/docs/STABILITY.md)
+for what each tier promises, and `dtctl config list-development` for every
+feature this build carries. The gate covers the *command* only:
 [`pkg/engine`](#embedding-pkgengine-instead) is importable Go API, and embedding
 it is a compile-time choice rather than something an operator can trip over.
 

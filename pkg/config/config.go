@@ -23,6 +23,7 @@ type (
 	Hooks          = session.Hooks
 	SpillConfig    = session.SpillConfig
 	SafetyLevel    = session.SafetyLevel
+	StabilityLevel = session.StabilityLevel
 	AliasEntry     = session.AliasEntry
 	AliasFile      = session.AliasFile
 )
@@ -112,3 +113,25 @@ const (
 )
 
 func BuiltinProfileNames() []string { return session.BuiltinProfileNames() }
+
+// Stability tiers (what dtctl promises about a command's shape over time) —
+// the ordered axis and its config/environment resolution live with the Config
+// type in sdk/session; declaration and *enforcement* stay in pkg/stability and
+// cmd/.
+const (
+	StabilityDevelopment  = session.StabilityDevelopment
+	StabilityExperimental = session.StabilityExperimental
+	StabilityStable       = session.StabilityStable
+	DefaultStabilityLevel = session.DefaultStabilityLevel
+	DefaultMinStability   = session.DefaultMinStability
+
+	MinStabilityEnvVar = session.MinStabilityEnvVar
+	DevelopmentEnvVar  = session.DevelopmentEnvVar
+	DevelopmentAll     = session.DevelopmentAll
+)
+
+// ValidStabilityLevels returns the stability levels in ascending order of promise.
+func ValidStabilityLevels() []StabilityLevel { return session.ValidStabilityLevels() }
+
+// ParseStabilityLevel validates and normalizes a user-written stability level.
+func ParseStabilityLevel(s string) (StabilityLevel, error) { return session.ParseStabilityLevel(s) }

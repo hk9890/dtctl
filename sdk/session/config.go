@@ -29,6 +29,10 @@ type Config struct {
 	// commands). A profile is selected via DTCTL_PROFILE or a context binding;
 	// see profile.go and docs/dev/COMMAND_PROFILES_DESIGN.md.
 	Profiles map[string]Profile `yaml:"profiles,omitempty"`
+	// Development enables development-tier features by key (e.g.
+	// "account": true). Development commands are not registered at all unless
+	// opted in here or via DTCTL_DEVELOPMENT; see stability.go.
+	Development map[string]bool `yaml:"development,omitempty"`
 
 	// localPath is the path of the auto-discovered local .dtctl.yaml this
 	// config was loaded from, if any. Empty when loaded from the global config
@@ -115,7 +119,16 @@ type Context struct {
 	// command surface when the context is active (unless overridden by
 	// DTCTL_PROFILE). Empty means the full command tree. See profile.go.
 	Profile string `yaml:"profile,omitempty" table:"PROFILE,wide"`
-	Hooks   Hooks  `yaml:"hooks,omitempty"`
+	// MinStability is the stability floor for this context: the weakest
+	// contract a command or flag may offer and still be usable. Empty means
+	// DefaultMinStability (experimental). See stability.go.
+	MinStability StabilityLevel `yaml:"min-stability,omitempty" table:"MIN-STABILITY,wide"`
+	// StabilityExceptions are narrow, audited opt-ins below the floor, each a
+	// command path optionally suffixed with one flag ("ingest",
+	// "query --spill"). They parameterize the floor for a named target rather
+	// than lowering it for everything.
+	StabilityExceptions []string `yaml:"stability-exceptions,omitempty" table:"-"`
+	Hooks               Hooks    `yaml:"hooks,omitempty"`
 	// Spill overrides the global spill settings for this context (D15). Nil
 	// fields inherit the global spill config.
 	Spill *SpillConfig `yaml:"spill,omitempty"`
@@ -728,6 +741,14 @@ type ContextOptions struct {
 	SafetyLevel SafetyLevel
 	Description string
 	Profile     string
+	// MinStability is the context's stability floor: the weakest contract a
+	// command or flag may offer and still be usable. See StabilityLevel.
+	MinStability StabilityLevel
+	// StabilityExceptions are individual commands and flags admitted below the
+	// floor ("ingest", "query --spill"). A nil slice leaves the existing list
+	// untouched; an empty non-nil slice clears it, which is how a caller
+	// withdraws every exception at once.
+	StabilityExceptions []string
 }
 
 // SetContext creates or updates a context
@@ -755,6 +776,12 @@ func (c *Config) SetContextWithOptions(name, environment, tokenRef string, opts 
 				if opts.Profile != "" {
 					c.Contexts[i].Context.Profile = opts.Profile
 				}
+				if opts.MinStability != "" {
+					c.Contexts[i].Context.MinStability = opts.MinStability
+				}
+				if opts.StabilityExceptions != nil {
+					c.Contexts[i].Context.StabilityExceptions = opts.StabilityExceptions
+				}
 			}
 			return
 		}
@@ -768,6 +795,8 @@ func (c *Config) SetContextWithOptions(name, environment, tokenRef string, opts 
 		ctx.SafetyLevel = opts.SafetyLevel
 		ctx.Description = opts.Description
 		ctx.Profile = opts.Profile
+		ctx.MinStability = opts.MinStability
+		ctx.StabilityExceptions = opts.StabilityExceptions
 	}
 
 	c.Contexts = append(c.Contexts, NamedContext{
