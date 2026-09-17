@@ -45,6 +45,7 @@
 | init |
 | install |
 | list |
+| list-development |
 | login |
 | logout |
 | lql-to-dql |
