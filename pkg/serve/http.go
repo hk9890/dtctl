@@ -46,6 +46,8 @@ type executeResponse struct {
 	// Files is the complete final state of the request's virtual filesystem.
 	Files      map[string]string `json:"files,omitempty"`
 	DurationMs int64             `json:"durationMs"`
+	// Truncated is true when stdout or stderr was cut at the output cap.
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 type errorResponse struct {
@@ -58,7 +60,8 @@ type errorResponse struct {
 //	GET  /healthz    — liveness probe
 //
 // maxRequestBytes bounds the request body (virtual files travel inline).
-func Handler(maxRequestBytes int64) http.Handler {
+// limits controls queue depth, duration, and output caps for each execution.
+func Handler(maxRequestBytes int64, limits engine.Limits) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -93,7 +96,7 @@ func Handler(maxRequestBytes int64) http.Handler {
 		}
 
 		start := time.Now()
-		res, err := engine.Execute(r.Context(), engine.Request{
+		res, err := engine.ExecuteWithLimits(r.Context(), engine.Request{
 			Command:        req.Command,
 			Argv:           req.Argv,
 			EnvironmentURL: req.EnvironmentURL,
@@ -105,8 +108,16 @@ func Handler(maxRequestBytes int64) http.Handler {
 			// Env is intentionally not exposed over HTTP: arbitrary variables
 			// reach proxies, exporters, and other process-level behavior.
 			// Embedding hosts that need it use engine.Request.Env directly.
-		})
+		}, limits)
 		if err != nil {
+			if errors.Is(err, engine.ErrTooManyQueued) {
+				// The server is saturated — the request is valid but cannot be
+				// served right now. 429 lets clients distinguish this from a
+				// malformed request (400) and retry automatically.
+				w.Header().Set("Retry-After", "1")
+				writeError(w, http.StatusTooManyRequests, err.Error())
+				return
+			}
 			// The request never ran: malformed shape or cancelled while queued.
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
@@ -123,6 +134,7 @@ func Handler(maxRequestBytes int64) http.Handler {
 			Stderr:     string(res.Stderr),
 			Files:      outFiles,
 			DurationMs: time.Since(start).Milliseconds(),
+			Truncated:  res.Truncated,
 		})
 	})
 	return mux
@@ -134,12 +146,34 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	_ = json.NewEncoder(w).Encode(errorResponse{Error: msg})
 }
 
+// ServeOptions holds timeout and engine configuration for the HTTP server.
+type ServeOptions struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+	Limits       engine.Limits
+}
+
+// newServer builds an *http.Server without starting it — extracted for testability.
+func newServer(addr string, handler http.Handler, opts ServeOptions) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       opts.ReadTimeout,
+		WriteTimeout:      opts.WriteTimeout,
+		IdleTimeout:       opts.IdleTimeout,
+	}
+}
+
 // newHTTPCommand builds `dtctl serve http`.
 func newHTTPCommand() *cobra.Command {
 	var (
 		addr            string
 		maxRequestBytes int64
+		opts            ServeOptions
 	)
+	opts.Limits = engine.DefaultLimits()
 	c := &cobra.Command{
 		Use:   "http",
 		Short: "Serve the dtctl execute API over HTTP (reference implementation)",
@@ -175,27 +209,35 @@ exposing it, or embed pkg/engine directly.`,
 				// lifetime and deadlock every request.
 				return errors.New("serve must be invoked directly as `dtctl serve http [flags]`, with no arguments before it")
 			}
-			return runHTTP(command.Context(), addr, maxRequestBytes)
+			return runHTTP(command.Context(), addr, maxRequestBytes, opts)
 		},
 	}
 	c.Flags().StringVar(&addr, "addr", "127.0.0.1:7211", "listen address")
 	c.Flags().Int64Var(&maxRequestBytes, "max-request-bytes", 10<<20,
 		"maximum request body size in bytes (virtual files travel inline)")
+	c.Flags().DurationVar(&opts.ReadTimeout, "read-timeout", 30*time.Second,
+		"time allowed to read the full request including body")
+	c.Flags().DurationVar(&opts.WriteTimeout, "write-timeout", 5*time.Minute,
+		"time allowed to write the response (set high enough for slow commands)")
+	c.Flags().DurationVar(&opts.IdleTimeout, "idle-timeout", 2*time.Minute,
+		"maximum time to wait for the next request on a keep-alive connection")
+	c.Flags().IntVar(&opts.Limits.MaxQueued, "max-queued",
+		engine.DefaultLimits().MaxQueued,
+		"maximum number of requests allowed to queue (waiting + running); excess returns 429")
+	c.Flags().DurationVar(&opts.Limits.MaxDuration, "max-duration",
+		engine.DefaultLimits().MaxDuration,
+		"maximum wall-clock time allowed for a single request execution")
 	return c
 }
 
 // runHTTP serves until the context is cancelled or SIGINT/SIGTERM arrives,
 // then shuts down gracefully, letting an in-flight execution finish (a started
 // run cannot be interrupted — see the pkg/engine cancellation notes).
-func runHTTP(ctx context.Context, addr string, maxRequestBytes int64) error {
+func runHTTP(ctx context.Context, addr string, maxRequestBytes int64, opts ServeOptions) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           Handler(maxRequestBytes),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	server := newServer(addr, Handler(maxRequestBytes, opts.Limits), opts)
 
 	errc := make(chan error, 1)
 	go func() {

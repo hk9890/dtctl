@@ -15,6 +15,10 @@ import (
 	"github.com/dynatrace-oss/dtctl/pkg/vfs"
 )
 
+// ErrTooManyQueued is returned when a request is rejected because the queue
+// depth would exceed MaxQueued. The caller should retry after a short delay.
+var ErrTooManyQueued = errors.New("engine: too many queued requests")
+
 // engineSlot is the single-execution semaphore: only one invocation runs at a time.
 var engineSlot = make(chan struct{}, 1)
 
@@ -119,7 +123,7 @@ func executeInner(ctx context.Context, req Request, limits Limits) (*Result, err
 	engineQueued.Add(1)
 	if engineQueued.Load() > int64(limits.MaxQueued) {
 		engineQueued.Add(-1)
-		return nil, errors.New("engine: too many queued requests")
+		return nil, ErrTooManyQueued
 	}
 	select {
 	case engineSlot <- struct{}{}:

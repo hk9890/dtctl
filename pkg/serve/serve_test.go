@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/dynatrace-oss/dtctl/pkg/engine"
 )
 
 // newDynatraceMock is a minimal fake Dynatrace environment for handler tests.
@@ -48,7 +50,7 @@ func postExecute(t *testing.T, srv *httptest.Server, body string) (*http.Respons
 
 func TestHandler_Execute(t *testing.T) {
 	dt := newDynatraceMock(t)
-	srv := httptest.NewServer(Handler(10 << 20))
+	srv := httptest.NewServer(Handler(10<<20, engine.DefaultLimits()))
 	t.Cleanup(srv.Close)
 
 	resp, body := postExecute(t, srv,
@@ -63,7 +65,7 @@ func TestHandler_Execute(t *testing.T) {
 
 func TestHandler_FilesRoundTrip(t *testing.T) {
 	dt := newDynatraceMock(t)
-	srv := httptest.NewServer(Handler(10 << 20))
+	srv := httptest.NewServer(Handler(10<<20, engine.DefaultLimits()))
 	t.Cleanup(srv.Close)
 
 	req, err := json.Marshal(executeRequest{
@@ -89,7 +91,7 @@ func TestHandler_FilesRoundTrip(t *testing.T) {
 // on a local shell. HTTP error statuses are reserved for requests that never
 // ran.
 func TestHandler_CommandFailureIsHTTP200(t *testing.T) {
-	srv := httptest.NewServer(Handler(10 << 20))
+	srv := httptest.NewServer(Handler(10<<20, engine.DefaultLimits()))
 	t.Cleanup(srv.Close)
 
 	resp, body := postExecute(t, srv,
@@ -103,7 +105,7 @@ func TestHandler_CommandFailureIsHTTP200(t *testing.T) {
 }
 
 func TestHandler_RequestErrors(t *testing.T) {
-	srv := httptest.NewServer(Handler(1024))
+	srv := httptest.NewServer(Handler(1024, engine.DefaultLimits()))
 	t.Cleanup(srv.Close)
 
 	t.Run("invalid JSON", func(t *testing.T) {
@@ -133,13 +135,27 @@ func TestHandler_RequestErrors(t *testing.T) {
 }
 
 func TestHandler_Healthz(t *testing.T) {
-	srv := httptest.NewServer(Handler(1024))
+	srv := httptest.NewServer(Handler(1024, engine.DefaultLimits()))
 	t.Cleanup(srv.Close)
 
 	resp, err := http.Get(srv.URL + "/healthz")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+// TestHandler_429WhenQueueFull: when the queue is full the handler returns 429
+// (not 400) so clients can distinguish saturation from a malformed request.
+func TestHandler_429WhenQueueFull(t *testing.T) {
+	limits := engine.DefaultLimits()
+	limits.MaxQueued = 0 // reject every request immediately
+	srv := httptest.NewServer(Handler(10<<20, limits))
+	t.Cleanup(srv.Close)
+
+	resp, _ := postExecute(t, srv,
+		`{"command":"get buckets","environmentUrl":"https://x.example.invalid","token":"t"}`)
+	require.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+	require.NotEmpty(t, resp.Header.Get("Retry-After"))
 }
 
 // TestNewCommand_Registered pins the command surface: `serve` is a protocol
@@ -156,6 +172,11 @@ func TestNewCommand_Registered(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, httpCmd.Flags().Lookup("addr"))
 	require.NotNil(t, httpCmd.Flags().Lookup("max-request-bytes"))
+	require.NotNil(t, httpCmd.Flags().Lookup("read-timeout"))
+	require.NotNil(t, httpCmd.Flags().Lookup("write-timeout"))
+	require.NotNil(t, httpCmd.Flags().Lookup("idle-timeout"))
+	require.NotNil(t, httpCmd.Flags().Lookup("max-queued"))
+	require.NotNil(t, httpCmd.Flags().Lookup("max-duration"))
 }
 
 // TestBareServePrintsHelp: naming the protocol is mandatory, and omitting it is
