@@ -221,6 +221,11 @@ func readLookupInput(file string, stdinIsTerminal bool) ([]byte, error) {
 
 	data, err := vfs.ReadFileOrStdin(file)
 	if err != nil {
+		if file == "-" {
+			// Already "failed to read from stdin: ..." -- wrapping it as a
+			// file read would name a source the user never gave.
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 	if len(data) == 0 {

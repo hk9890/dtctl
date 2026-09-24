@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -346,24 +345,14 @@ func TestRunDeleteBreakpointRows_PartialFailure(t *testing.T) {
 func TestRunDeleteBreakpointRows_CancelledConfirmation(t *testing.T) {
 	originalDryRun := dryRun
 	originalPlainMode := plainMode
-	originalStdin := os.Stdin
 	defer func() {
 		dryRun = originalDryRun
 		plainMode = originalPlainMode
-		os.Stdin = originalStdin
 	}()
 
 	dryRun = false
 	plainMode = false
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe error: %v", err)
-	}
-	if _, err := w.WriteString("n\n"); err != nil {
-		t.Fatalf("write stdin stub failed: %v", err)
-	}
-	_ = w.Close()
-	os.Stdin = r
+	withStdin(t, "n\n")
 
 	output := captureStdout(t, func() {
 		if err := runDeleteBreakpointRows(nil, "workspace-1", []breakpointRow{{ID: "bp-1", Filename: "A.java", Line: 10}}, false, false); err != nil {

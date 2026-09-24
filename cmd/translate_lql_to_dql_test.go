@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
@@ -142,16 +141,7 @@ func TestTranslateLqlToDqlCmd_StdinArg(t *testing.T) {
 	_, configPath, cleanup := setupLqlToDqlServer(t, lqlToDqlResponse)
 	defer cleanup()
 
-	// Redirect stdin to a pipe with LQL content.
-	origStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe: %v", err)
-	}
-	os.Stdin = r
-	_, _ = w.WriteString(`log.source="snmptraps"`)
-	_ = w.Close()
-	defer func() { os.Stdin = origStdin }()
+	withStdin(t, `log.source="snmptraps"`)
 
 	withLqlToDqlGlobals(t, configPath, func() {
 		testutil.ResetCommandFlags(translateLqlToDqlCmd)

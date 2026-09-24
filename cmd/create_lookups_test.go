@@ -18,12 +18,16 @@ func withStdin(t *testing.T, content string) {
 	if err != nil {
 		t.Fatalf("os.Pipe: %v", err)
 	}
-	if _, err := w.WriteString(content); err != nil {
-		t.Fatalf("write stdin: %v", err)
-	}
-	if err := w.Close(); err != nil {
-		t.Fatalf("close stdin writer: %v", err)
-	}
+	// The write runs in a goroutine: a pipe holds only one buffer's worth
+	// (64 KiB on Linux), so writing inline would deadlock as soon as a test
+	// feeds more than that. Errors are dropped for the same reason stdio.go
+	// drops them -- a command that never reads closes the pipe under the
+	// writer, and that is not a test failure.
+	go func() {
+		_, _ = w.WriteString(content)
+		_ = w.Close()
+	}()
+
 	original := os.Stdin
 	os.Stdin = r
 	t.Cleanup(func() {
@@ -113,6 +117,13 @@ func TestCreateLookupManifestOnStdin(t *testing.T) {
 	withStdin(t, `{"apiVersion":"v1","kind":"Dashboard"}`)
 	setCreateLookupFlags(t, "-")
 	withAgentMode(t, false)
+
+	// Pinned so that a regression in the manifest guard fails the assertions
+	// instead of falling through to SetupWithSafety and uploading a manifest
+	// to whatever tenant the developer has configured.
+	originalDryRun := dryRun
+	t.Cleanup(func() { dryRun = originalDryRun })
+	dryRun = true
 
 	err := createLookupCmd.RunE(createLookupCmd, nil)
 	if err == nil {
