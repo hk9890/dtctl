@@ -87,6 +87,34 @@ func TestParse(t *testing.T) {
 	}
 }
 
+// TestParse_Confirmation: a command that asks for confirmation reads the
+// request's input, unless the command line skips the question.
+func TestParse_Confirmation(t *testing.T) {
+	for command, want := range map[string]bool{
+		"delete workflow wf-1":               true,
+		"delete workflow wf-1 --yes":         false,
+		"delete workflow wf-1 -y":            false,
+		"delete workflow wf-1 --yes=false":   true,
+		"delete workflow wf-1 --plain":       false,
+		"delete workflow wf-1 --agent":       false,
+		"delete workflow wf-1 --dry-run":     false,
+		"--dry-run delete workflow wf-1":     false,
+		"delete bucket b --confirm b":        false,
+		"restore dashboard d 3":              true,
+		"restore dashboard d 3 --force":      false,
+		"restore trash a":                    true,
+		"restore trash a b":                  false, // asks for one document only
+		"delete scheduling-rule r --dry-run": true,  // asks before its dry run returns
+		"get workflows":                      false,
+	} {
+		t.Run(command, func(t *testing.T) {
+			got, err := Parse(context.Background(), ParseRequest{Command: command, MinStability: "experimental"})
+			require.NoError(t, err)
+			assert.Equal(t, want, got.RequiresInput)
+		})
+	}
+}
+
 // TestParse_UsageErrors holds a refused command line to a *UsageError: the
 // request's surface (blocked commands, profile, floor) applies as it does to
 // Execute, and so does cobra's validation.

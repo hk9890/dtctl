@@ -153,11 +153,13 @@ var stabilityAnnotationKeys = []string{
 // key or value would silently drop a file from a caller's view.
 func TestFileFlagAnnotationsAreValid(t *testing.T) {
 	known := map[string]bool{
-		annotationFile:             true,
-		annotationWritesTo:         true,
-		annotationInputWithoutArgs: true,
-		annotationScopes:           true,
-		annotationArgumentFlag:     true,
+		annotationFile:                true,
+		annotationWritesTo:            true,
+		annotationInputWithoutArgs:    true,
+		annotationScopes:              true,
+		annotationArgumentFlag:        true,
+		annotationConfirms:            true, // values held by TestConfirmationPromptsAreDeclared
+		annotationConfirmsOneArgument: true,
 	}
 	for _, k := range stabilityAnnotationKeys {
 		known[k] = true
@@ -168,7 +170,7 @@ func TestFileFlagAnnotationsAreValid(t *testing.T) {
 			if strings.HasPrefix(k, "dtctl.io/") && !known[k] {
 				t.Errorf("%s: unknown annotation %q", c.CommandPath(), k)
 			}
-			if k == annotationInputWithoutArgs && v != "true" {
+			if (k == annotationInputWithoutArgs || k == annotationConfirmsOneArgument) && v != "true" {
 				t.Errorf("%s: %s = %q, want \"true\"", c.CommandPath(), k, v)
 			}
 			if k == annotationScopes && v != scopesInputDependent {

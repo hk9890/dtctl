@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -31,6 +32,13 @@ const (
 	// setting it keeps an annotationInputWithoutArgs command from reading
 	// stdin. Its value is "true".
 	annotationArgumentFlag = "dtctl.io/argument"
+	// annotationConfirms marks a command that asks for confirmation on stdin
+	// unless --plain or --agent is in effect or one of the flags it names is
+	// set. Its value is those flags' names, comma-separated.
+	annotationConfirms = "dtctl.io/confirms"
+	// annotationConfirmsOneArgument marks an annotationConfirms command that
+	// asks only when it is given exactly one argument. Its value is "true".
+	annotationConfirmsOneArgument = "dtctl.io/confirms-one-argument"
 )
 
 // Values of annotationFile.
@@ -74,6 +82,22 @@ func markInputWithoutArgs(cmd *cobra.Command) {
 // stdin.
 func markArgumentFlag(cmd *cobra.Command, name string) {
 	setFlagAnnotation(cmd, name, annotationArgumentFlag, "true")
+}
+
+// markConfirms declares that cmd asks for confirmation on stdin, and that
+// setting any of skipFlags skips the question. Name "dry-run" only where the
+// dry run returns before the question is asked. The names are checked by
+// TestConfirmationPromptsAreDeclared, not here: --dry-run is bound after the
+// constructors run.
+func markConfirms(cmd *cobra.Command, skipFlags ...string) {
+	setCommandAnnotation(cmd, annotationConfirms, strings.Join(skipFlags, ","))
+}
+
+// markConfirmsOneArgument is markConfirms for a command that asks only when
+// it is given exactly one argument.
+func markConfirmsOneArgument(cmd *cobra.Command, skipFlags ...string) {
+	markConfirms(cmd, skipFlags...)
+	setCommandAnnotation(cmd, annotationConfirmsOneArgument, "true")
 }
 
 // lookupOwnFlag finds a flag cmd itself declares, local or persistent.

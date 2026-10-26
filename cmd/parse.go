@@ -49,7 +49,9 @@ type ParseResult struct {
 	InputFiles  []string
 	OutputFiles []string
 	// RequiresInput is true when the command reads stdin: a "-" file value,
-	// "-d @-", or a command such as query given no argument and no file.
+	// "-d @-", a command such as query given no argument and no file, or a
+	// command that asks for confirmation (delete, restore) without --plain,
+	// --agent or the flag that skips the question.
 	RequiresInput bool
 
 	// RequiredScopes are the token scopes the catalog names for the command,
@@ -267,12 +269,34 @@ func newParseResult(c *cobra.Command, args []string) *ParseResult {
 	if c.Annotations[annotationInputWithoutArgs] == "true" && len(args) == 0 && !argumentGiven {
 		res.RequiresInput = true
 	}
+	if asksForConfirmation(c, args) {
+		res.RequiresInput = true
+	}
 	res.InputFiles, res.OutputFiles = slices.Sorted(maps.Keys(inputs)), slices.Sorted(maps.Keys(outputs))
 
 	required, req := scopesForInvocation(c, verb, resource)
 	res.RequiredScopes = append([]string(nil), required...)
 	res.Scopes = req.String()
 	return res
+}
+
+// asksForConfirmation reports whether c, as parsed with args, asks for
+// confirmation on stdin: it is declared with markConfirms, neither --plain nor
+// --agent is in effect, and no flag that skips the question is set.
+func asksForConfirmation(c *cobra.Command, args []string) bool {
+	skips, ok := c.Annotations[annotationConfirms]
+	if !ok || plainMode(cmdContext(c)) {
+		return false
+	}
+	if c.Annotations[annotationConfirmsOneArgument] == "true" && len(args) != 1 {
+		return false
+	}
+	for _, name := range strings.Split(skips, ",") {
+		if f := c.Flags().Lookup(name); f != nil && f.Changed && f.Value.String() != "" && f.Value.String() != "false" {
+			return false
+		}
+	}
+	return true
 }
 
 // addFileKey adds the file a value names to set. A value that names no file

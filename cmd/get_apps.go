@@ -155,6 +155,7 @@ Examples:
 		},
 	}
 	c.Flags().BoolVarP(&forceDelete, "yes", "y", false, "Skip confirmation prompt")
+	markConfirms(c, "yes", "dry-run")
 	stability.MarkStable(c)
 	return c
 }
