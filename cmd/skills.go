@@ -49,6 +49,7 @@ which is automatically discovered by any agentskills.io-compatible agent.`,
 		RunE: requireSkillsSubcommand,
 	}
 	stability.MarkStable(c)
+	markLocal(c)
 	return c
 }
 

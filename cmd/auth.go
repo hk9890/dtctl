@@ -370,6 +370,7 @@ OAuth-specific fields.`,
 		},
 	}
 	stability.MarkStable(c)
+	markLocal(c)
 	return c
 }
 
@@ -863,6 +864,7 @@ Non-interactive login (CI/CD):
 	// Left out, it defaults from the config; an explicitly empty value (an
 	// unset shell variable) must not silently take that default.
 	rejectEmptyFlag(c, "environment")
+	markLocal(c)
 	return c
 }
 
@@ -965,6 +967,7 @@ If no context name is provided, the current context will be used.`,
 	}
 	c.Flags().Bool("remove-context", false, "also remove the context configuration")
 	stability.MarkStable(c)
+	markLocal(c)
 	return c
 }
 
@@ -1052,6 +1055,7 @@ to force a refresh.`,
 		},
 	}
 	stability.MarkStable(c)
+	markLocal(c)
 	return c
 }
 

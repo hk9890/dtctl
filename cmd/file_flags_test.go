@@ -160,6 +160,7 @@ func TestFileFlagAnnotationsAreValid(t *testing.T) {
 		annotationArgumentFlag:        true,
 		annotationConfirms:            true, // values held by TestConfirmationPromptsAreDeclared
 		annotationConfirmsOneArgument: true,
+		annotationLocal:               true,
 	}
 	for _, k := range stabilityAnnotationKeys {
 		known[k] = true
@@ -170,7 +171,7 @@ func TestFileFlagAnnotationsAreValid(t *testing.T) {
 			if strings.HasPrefix(k, "dtctl.io/") && !known[k] {
 				t.Errorf("%s: unknown annotation %q", c.CommandPath(), k)
 			}
-			if (k == annotationInputWithoutArgs || k == annotationConfirmsOneArgument) && v != "true" {
+			if (k == annotationInputWithoutArgs || k == annotationConfirmsOneArgument || k == annotationLocal) && v != "true" {
 				t.Errorf("%s: %s = %q, want \"true\"", c.CommandPath(), k, v)
 			}
 			if k == annotationScopes && v != scopesInputDependent {
