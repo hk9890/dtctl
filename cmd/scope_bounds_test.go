@@ -5,7 +5,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -172,6 +174,90 @@ var dqlSites = map[string][]string{
 	"verify_query.go:newVerifyQueryCmd":                              {"verify query"},
 	"wait.go:newWaitQueryCmd":                                        {"wait query"},
 	"get_lookups.go:printLookupNotifications":                        nil, // prints the notifications of a finished query, runs none
+}
+
+// dqlPackages maps every file below pkg/ (outside pkg/exec) that builds a DQL
+// executor to the commands that reach it.
+var dqlPackages = map[string][]string{
+	"pkg/resources/lookup/lookup.go": {"get lookups", "describe lookup", "delete lookup"},
+}
+
+// TestPackageDQLRunnersAreDeclared is TestDQLRunnersAreDeclared for DQL run
+// by a resource handler below pkg/, which the cmd/ scan does not see.
+func TestPackageDQLRunnersAreDeclared(t *testing.T) {
+	found := map[string]bool{}
+	err := filepath.WalkDir("../pkg", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel := repoRelative(path)
+		if d.IsDir() {
+			if rel == "pkg/exec" || skipDir(d.Name()) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		src, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(src), "NewDQLExecutor(") {
+			found[rel] = true
+			if _, ok := dqlPackages[rel]; !ok {
+				t.Errorf("%s runs DQL; declare the commands that reach it with markRunsDQL and list them in dqlPackages", rel)
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	root := newCommandTree(withInvocation(context.Background(), &invocation{concurrent: true})).root
+	for file, paths := range dqlPackages {
+		if !found[file] {
+			t.Errorf("%s no longer runs DQL: remove its entry", file)
+		}
+		for _, path := range paths {
+			c, _, err := root.Find(strings.Fields(path))
+			require.NoError(t, err, path)
+			if c.Annotations[annotationScopes] != scopesDQL && c.Annotations[annotationRunsDQL] != "true" {
+				t.Errorf("%s runs DQL through %s; declare it with markRunsDQL", path, file)
+			}
+		}
+	}
+}
+
+// serverSideBounds pins the bounds of the commands whose calls the server
+// carries out with the caller's token. Each was checked against the
+// specification the environment publishes.
+var serverSideBounds = map[string][2][]string{
+	// The analyzer runs with the caller's token and can do any work, so a
+	// fixed list breaks it (an analyzer's DQL failed without storage:logs:read).
+	"exec analyzer": {{"davis:analyzers:execute"}, {"*"}},
+	// The detector's analyzer input carries a query.
+	"create anomaly-detector": {{"settings:objects:write"}, {"*"}},
+	"edit anomaly-detector":   {{"settings:objects:write"}, {"*"}},
+	// Evaluation runs the SLO's indicator DQL with the caller's token.
+	"exec slo": {{"slo:slos:read", "slo:objective-templates:read"}, {"slo:objective-templates:read", "slo:slos:read", "storage:*:read"}},
+	// Lookups are listed and read through DQL (fetch dt.system.files, load).
+	"get lookups":     {{"storage:files:read"}, {"storage:*:read", "storage:files:read"}},
+	"describe lookup": {{"storage:files:read"}, {"storage:*:read", "storage:files:read"}},
+	"delete lookup":   {{"storage:files:delete"}, {"storage:*:read", "storage:files:delete", "storage:files:read"}},
+}
+
+// TestServerSideBoundsArePinned holds serverSideBounds.
+func TestServerSideBoundsArePinned(t *testing.T) {
+	root := newCommandTree(withInvocation(context.Background(), &invocation{concurrent: true})).root
+	for path, want := range serverSideBounds {
+		c, _, err := root.Find(strings.Fields(path))
+		require.NoError(t, err, path)
+		require.Equal(t, path, commandPathRelative(c, root))
+		verb, resource := verbResource(c)
+		minimum, maximum := scopeBounds(c, verb, resource)
+		assert.Equal(t, want[0], minimum, "%s minimum", path)
+		assert.Equal(t, want[1], maximum, "%s maximum", path)
+	}
 }
 
 // TestDQLRunnersAreDeclared holds that every command that runs DQL can use

@@ -18,8 +18,10 @@ import (
 const annotationLocal = "dtctl.io/local"
 
 // annotationRunsDQL marks a command that runs DQL besides the API of its
-// resource (a describe that adds recent problems from Grail). Its maximum
-// scopes gain auth.QueryScopePattern. Its value is "true".
+// resource, itself (a describe that adds recent problems from Grail, a lookup
+// read through load) or through the server with the caller's token (exec slo
+// evaluates the SLO's indicator query). Its maximum scopes gain
+// auth.QueryScopePattern. Its value is "true".
 const annotationRunsDQL = "dtctl.io/runs-dql"
 
 // Values of annotationScopes besides scopesInputDependent.
@@ -28,9 +30,11 @@ const (
 	// and the statement decides which tables it reads. Its minimum is [] and
 	// its maximum auth.QueryScopePattern.
 	scopesDQL = "dql"
-	// scopesAny: the command runs code or a request the caller supplies
-	// (exec function), so beyond the catalog's scopes, its minimum, it can use
-	// any scope the user holds.
+	// scopesAny: what the command calls is decided by its payload or target,
+	// not by dtctl: it runs code the caller supplies (exec function), runs an
+	// analyzer with the caller's token (exec analyzer), or stores an analyzer
+	// input with a query (create anomaly-detector). Beyond the catalog's
+	// scopes, its minimum, it can use any scope the user holds.
 	scopesAny = "any"
 )
 
