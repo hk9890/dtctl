@@ -2,11 +2,21 @@ package cmd
 
 import (
 	"context"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"maps"
+	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/dynatrace-oss/dtctl/pkg/auth"
 )
 
 // localCommands are the runnable commands declared, or inheriting the
@@ -77,4 +87,142 @@ func TestLocalCommandsArePinned(t *testing.T) {
 // not a group that only refuses a missing subcommand.
 func isParseRunnable(c *cobra.Command) bool {
 	return c.HasParent() && c.Runnable() && (c.RunE == nil || !isRequireSubcommand(c.RunE))
+}
+
+// noCatalogEntryCommands are the commands that reach the platform but have no
+// scope catalog entry and no declaration, each with the reason. They report
+// minimum [] and maximum ["*"]. The list can only shrink: give a new command
+// a catalog entry (auth.ResourceScopes) or a declaration instead.
+var noCatalogEntryCommands = map[string]string{
+	"auth whoami":  "reads the caller's own user; needs a valid token, no scope",
+	"describe api": "reads the environment's API index and specifications; needs a valid token, no scope",
+	"get apis":     "reads the environment's API index; needs a valid token, no scope",
+	"doctor":       "checks that the environment answers; needs a valid token, no scope",
+}
+
+// TestScopeBoundsOverTheTree holds the scope bounds of every command: both
+// are non-nil, every minimum scope matches a maximum pattern, only a local
+// command reports maximum [], and a command reports ["*"] only when it is
+// declared to or is listed in noCatalogEntryCommands.
+func TestScopeBoundsOverTheTree(t *testing.T) {
+	root := newCommandTree(withInvocation(context.Background(), &invocation{concurrent: true})).root
+	unlisted := maps.Clone(noCatalogEntryCommands)
+	walkCommands(root, func(c *cobra.Command) {
+		if !isParseRunnable(c) {
+			return
+		}
+		path := commandPathRelative(c, root)
+		verb, resource := verbResource(c)
+		minimum, maximum := scopeBounds(c, verb, resource)
+		require.NotNil(t, minimum, path)
+		require.NotNil(t, maximum, path)
+		for _, s := range minimum {
+			if !slices.ContainsFunc(maximum, func(p string) bool { return auth.ScopeMatches(p, s) }) {
+				t.Errorf("%s: minimum scope %s matches no maximum pattern %v", path, s, maximum)
+			}
+		}
+		local := isLocal(c)
+		if local != (len(maximum) == 0) {
+			t.Errorf("%s: local is %v, but maximum is %v", path, local, maximum)
+		}
+		declared := c.Annotations[annotationScopes] == scopesInputDependent ||
+			c.Annotations[annotationScopes] == scopesAny || perCallScopeCommands[verb+" "+resource]
+		if slices.Equal(maximum, []string{anyScope}) && !declared {
+			if _, ok := noCatalogEntryCommands[path]; !ok {
+				t.Errorf("%s reaches the platform, but has no catalog entry: add one to auth.ResourceScopes, or markLocal it if it never reaches the platform", path)
+			}
+			delete(unlisted, path)
+		}
+	})
+	for path := range unlisted {
+		t.Errorf("noCatalogEntryCommands lists %q, which now has known scopes or is gone: remove it", path)
+	}
+}
+
+// TestDQLStatementCommandsAreDeclared holds that a command whose catalog
+// requirement is the DQL scope list is declared with markScopesDQL, so it
+// reports maximum storage:*:read instead of a fixed list that misses the
+// tables it is not named after.
+func TestDQLStatementCommandsAreDeclared(t *testing.T) {
+	root := newCommandTree(withInvocation(context.Background(), &invocation{concurrent: true})).root
+	walkCommands(root, func(c *cobra.Command) {
+		if !isParseRunnable(c) {
+			return
+		}
+		verb, resource := verbResource(c)
+		required, _ := requiredScopesIn(root, verb, resource)
+		if slices.Equal(required, auth.QueryScopes) && c.Annotations[annotationScopes] != scopesDQL {
+			t.Errorf("%s needs the DQL scopes; declare it with markScopesDQL", commandPathRelative(c, root))
+		}
+	})
+}
+
+// dqlSites maps every function in cmd/ that builds a DQL executor to the
+// commands that call it. An entry without commands names the reason it runs
+// no query.
+var dqlSites = map[string][]string{
+	"describe_anomalydetector.go:printAnomalyDetectorRecentProblems": {"describe anomaly-detector"},
+	"describe_aws.go:printAWSMonitoringConfigStatus":                 {"describe aws monitoring"},
+	"describe_gcp.go:printGCPMonitoringConfigStatus":                 {"describe gcp monitoring"},
+	"describe.go:printAzureMonitoringConfigStatus":                   {"describe azure monitoring"},
+	"exec_dql.go:newExecDQLCmd":                                      {"exec dql"},
+	"get_snapshots.go:newGetSnapshotsCmd":                            {"get snapshots"},
+	"inventory.go:newInventoryRunner":                                {"inventory", "inventory arrivals"},
+	"query.go:newQueryCmd":                                           {"query"},
+	"verify_query.go:newVerifyQueryCmd":                              {"verify query"},
+	"wait.go:newWaitQueryCmd":                                        {"wait query"},
+	"get_lookups.go:printLookupNotifications":                        nil, // prints the notifications of a finished query, runs none
+}
+
+// TestDQLRunnersAreDeclared holds that every command that runs DQL can use
+// the Grail read scopes: it is declared with markScopesDQL (the statement is
+// the caller's) or markRunsDQL (it adds a Grail section), so its maximum
+// holds storage:*:read. A command without would get a token that cannot read
+// what it queries.
+func TestDQLRunnersAreDeclared(t *testing.T) {
+	wrappers := map[string]bool{"newDQLExecutor": true, "newDQLExecutorFromConfig": true, "NewDQLExecutorFromConfig": true}
+	files, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+	fset := token.NewFileSet()
+	found := map[string]bool{}
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		require.NoError(t, err)
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil || wrappers[fn.Name.Name] {
+				continue
+			}
+			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				if call, ok := n.(*ast.CallExpr); ok {
+					if id, ok := call.Fun.(*ast.Ident); ok && wrappers[id.Name] {
+						site := name + ":" + fn.Name.Name
+						found[site] = true
+						if _, ok := dqlSites[site]; !ok {
+							t.Errorf("%s: %s runs DQL; declare its command with markRunsDQL and list it in dqlSites",
+								fset.Position(call.Pos()), fn.Name.Name)
+						}
+					}
+				}
+				return true
+			})
+		}
+	}
+	root := newCommandTree(withInvocation(context.Background(), &invocation{concurrent: true})).root
+	for site, paths := range dqlSites {
+		if !found[site] {
+			t.Errorf("%s no longer builds a DQL executor: remove its entry", site)
+		}
+		for _, path := range paths {
+			c, _, err := root.Find(strings.Fields(path))
+			require.NoError(t, err, path)
+			require.Equal(t, path, commandPathRelative(c, root))
+			if c.Annotations[annotationScopes] != scopesDQL && c.Annotations[annotationRunsDQL] != "true" {
+				t.Errorf("%s runs DQL; declare it with markScopesDQL or markRunsDQL", path)
+			}
+		}
+	}
 }

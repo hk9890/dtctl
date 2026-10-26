@@ -273,6 +273,28 @@ var QueryScopes = []string{
 // entry of QueryScopes and grailExtendedReadScopes matches it.
 const QueryScopePattern = "storage:*:read"
 
+// ScopeMatches reports whether scope matches pattern, where "*" matches any
+// text, including none, and every other character matches itself. It is the
+// rule engine.Parsed.MaximumScopes is read with.
+func ScopeMatches(pattern, scope string) bool {
+	parts := strings.Split(pattern, "*")
+	if len(parts) == 1 {
+		return pattern == scope
+	}
+	if !strings.HasPrefix(scope, parts[0]) {
+		return false
+	}
+	rest := scope[len(parts[0]):]
+	for _, part := range parts[1 : len(parts)-1] {
+		i := strings.Index(rest, part)
+		if i < 0 {
+			return false
+		}
+		rest = rest[i+len(part):]
+	}
+	return strings.HasSuffix(rest, parts[len(parts)-1])
+}
+
 // singularize returns a basic singular form by stripping a trailing "s".
 // Mirrors pkg/commands.singularize; kept here to avoid an import cycle.
 func singularize(name string) string {
