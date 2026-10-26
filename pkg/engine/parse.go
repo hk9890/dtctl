@@ -38,7 +38,8 @@ type Parsed struct {
 
 	// InputFiles and OutputFiles are the files the command reads and writes,
 	// named the way Request.Files and Result.Files name them (vfs.Key), sorted
-	// and de-duplicated. "-" is never a path.
+	// and de-duplicated. A "-" value is Request.Stdin, not a file; a path to a
+	// file named "-" (./-) is the key "-".
 	InputFiles  []string
 	OutputFiles []string
 	// RequiresInput is true when the command reads Request.Stdin: a "-" file

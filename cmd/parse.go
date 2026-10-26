@@ -44,7 +44,8 @@ type ParseResult struct {
 	Resource string // "" when the verb takes none (apply)
 
 	// InputFiles and OutputFiles are the files the command reads and writes,
-	// as vfs.Key names, sorted and de-duplicated. "-" is never one.
+	// as vfs.Key names, sorted and de-duplicated. A "-" value is stdin, not a
+	// file; a path to a file named "-" (./-) is the key "-".
 	InputFiles  []string
 	OutputFiles []string
 	// RequiresInput is true when the command reads stdin: a "-" file value,
@@ -275,10 +276,11 @@ func newParseResult(c *cobra.Command, args []string) *ParseResult {
 }
 
 // addFileKey adds the file a value names to set. A value that names no file
-// ("", ".", "@" with nothing after it) or names "-" adds nothing: "-" is
-// never reported as a path.
+// ("", ".", "@" with nothing after it) adds nothing. The caller has already
+// taken a bare "-" as stdin, so a key "-" here is a file: "./-" is read from
+// the filesystem at run time.
 func addFileKey(set map[string]bool, value string) {
-	if key := vfs.Key(value); key != "" && key != "-" {
+	if key := vfs.Key(value); key != "" {
 		set[key] = true
 	}
 }

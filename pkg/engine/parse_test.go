@@ -58,9 +58,13 @@ func TestParse(t *testing.T) {
 			command: "apply -f .",
 			want:    Parsed{Verb: "apply", Scopes: ScopesInputDependent},
 		},
-		"a file named - is not reported": {
+		"a file named -": {
 			command: "apply -f ./-",
-			want:    Parsed{Verb: "apply", Scopes: ScopesInputDependent},
+			want:    Parsed{Verb: "apply", InputFiles: []string{"-"}, Scopes: ScopesInputDependent},
+		},
+		"an at-path to a file named -": {
+			command: "exec api /platform/x -X POST -d @./-",
+			want:    Parsed{Verb: "exec", Resource: "api", InputFiles: []string{"-"}, Scopes: ScopesPerCall},
 		},
 		"empty at-path": {
 			command: "exec api /platform/x -X POST -d @",
