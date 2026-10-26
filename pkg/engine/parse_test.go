@@ -8,9 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Scope bounds the cases below expect.
+var (
+	noScopes  = []string{}
+	anyScope  = []string{"*"}
+	dqlScopes = []string{"storage:*:read"}
+)
+
 // TestParse holds the answers a host relies on: the files a command line
-// reads and writes, whether it reads the request's input, and how certain its
-// scopes are.
+// reads and writes, whether it reads the request's input, and the scope
+// bounds.
 func TestParse(t *testing.T) {
 	for name, tc := range map[string]struct {
 		command string
@@ -19,72 +26,68 @@ func TestParse(t *testing.T) {
 		"file flag": {
 			command: "create workflow -f wf.yaml",
 			want: Parsed{Verb: "create", Resource: "workflow", InputFiles: []string{"wf.yaml"},
-				RequiredScopes: []string{"automation:workflows:write"}, Scopes: ScopesKnown},
+				MinimumScopes: []string{"automation:workflows:write"},
+				MaximumScopes: []string{"automation:workflows:read", "automation:workflows:write"}},
 		},
 		"write-back": {
 			command: "apply -f ./dashboard.yaml --write-id",
 			want: Parsed{Verb: "apply", InputFiles: []string{"dashboard.yaml"}, OutputFiles: []string{"dashboard.yaml"},
-				Scopes: ScopesInputDependent},
+				MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"stdin as a file": {
 			command: "apply -f -",
-			want:    Parsed{Verb: "apply", RequiresInput: true, Scopes: ScopesInputDependent},
+			want:    Parsed{Verb: "apply", RequiresInput: true, MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"at-path body": {
 			command: "exec api /platform/x -X POST -d @body.json",
-			want:    Parsed{Verb: "exec", Resource: "api", InputFiles: []string{"body.json"}, Scopes: ScopesPerCall},
+			want: Parsed{Verb: "exec", Resource: "api", InputFiles: []string{"body.json"},
+				MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"inline body": {
 			command: `exec api /platform/x -X POST -d '{"a":1}'`,
-			want:    Parsed{Verb: "exec", Resource: "api", Scopes: ScopesPerCall},
+			want:    Parsed{Verb: "exec", Resource: "api", MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"query from stdin": {
 			command: "query",
-			want:    Parsed{Verb: "query", RequiresInput: true, Scopes: ScopesKnown},
+			want:    Parsed{Verb: "query", RequiresInput: true, MinimumScopes: noScopes, MaximumScopes: dqlScopes},
 		},
 		"output format is not a file": {
 			command: "query 'fetch logs' -o json",
-			want:    Parsed{Verb: "query", Scopes: ScopesKnown},
+			want:    Parsed{Verb: "query", MinimumScopes: noScopes, MaximumScopes: dqlScopes},
 		},
 		"two files": {
 			command: "diff -f a.yaml -f /b.yaml",
-			want:    Parsed{Verb: "diff", InputFiles: []string{"a.yaml", "b.yaml"}, Scopes: ScopesInputDependent},
+			want:    Parsed{Verb: "diff", InputFiles: []string{"a.yaml", "b.yaml"}, MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"empty argument flag still reads stdin": {
 			command: `query --dql ""`,
-			want:    Parsed{Verb: "query", RequiresInput: true, Scopes: ScopesKnown},
+			want:    Parsed{Verb: "query", RequiresInput: true, MinimumScopes: noScopes, MaximumScopes: dqlScopes},
 		},
 		"no file named": {
 			command: "apply -f .",
-			want:    Parsed{Verb: "apply", Scopes: ScopesInputDependent},
+			want:    Parsed{Verb: "apply", MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"a file named -": {
 			command: "apply -f ./-",
-			want:    Parsed{Verb: "apply", InputFiles: []string{"-"}, Scopes: ScopesInputDependent},
+			want:    Parsed{Verb: "apply", InputFiles: []string{"-"}, MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"an at-path to a file named -": {
 			command: "exec api /platform/x -X POST -d @./-",
-			want:    Parsed{Verb: "exec", Resource: "api", InputFiles: []string{"-"}, Scopes: ScopesPerCall},
+			want: Parsed{Verb: "exec", Resource: "api", InputFiles: []string{"-"},
+				MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"empty at-path": {
 			command: "exec api /platform/x -X POST -d @",
-			want:    Parsed{Verb: "exec", Resource: "api", Scopes: ScopesPerCall},
+			want:    Parsed{Verb: "exec", Resource: "api", MinimumScopes: noScopes, MaximumScopes: anyScope},
 		},
 		"local command": {
 			command: "version",
-			want:    Parsed{Verb: "version", Scopes: ScopesNone},
+			want:    Parsed{Verb: "version", MinimumScopes: noScopes, MaximumScopes: noScopes},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := Parse(context.Background(), ParseRequest{Command: tc.command})
 			require.NoError(t, err)
-			if tc.want.Scopes == ScopesKnown && tc.want.RequiredScopes == nil {
-				assert.NotEmpty(t, got.RequiredScopes)
-				got.RequiredScopes = []string{}
-			}
-			if tc.want.RequiredScopes == nil {
-				tc.want.RequiredScopes = []string{}
-			}
 			if tc.want.InputFiles == nil {
 				tc.want.InputFiles = []string{}
 			}
@@ -108,6 +111,38 @@ func TestParse_CheckScopesReadsNoInput(t *testing.T) {
 			got, err := Parse(context.Background(), ParseRequest{Command: command})
 			require.NoError(t, err)
 			assert.False(t, got.RequiresInput)
+		})
+	}
+}
+
+// TestParse_ScopeBounds holds the reference values of the scope bounds.
+func TestParse_ScopeBounds(t *testing.T) {
+	for command, want := range map[string][2][]string{
+		"help":                              {noScopes, noScopes},
+		"commands --full":                   {noScopes, noScopes},
+		"get workflows --help":              {noScopes, noScopes},
+		"exec function x -h":                {noScopes, noScopes},
+		"get notebooks":                     {{"document:documents:read"}, {"document:documents:read"}},
+		"get notebooks --admin-access":      {{"document:documents:admin", "document:documents:read"}, {"document:documents:admin", "document:documents:read"}},
+		"query 'fetch logs'":                {noScopes, dqlScopes},
+		"verify query 'fetch logs'":         {noScopes, dqlScopes},
+		"wait query 'fetch logs' --for any": {noScopes, dqlScopes},
+		"exec function my-app/fn":           {{"app-engine:functions:run"}, anyScope},
+		"exec api /platform/x":              {noScopes, anyScope},
+		"apply -f x.yaml":                   {noScopes, anyScope},
+		"delete dashboard d":                {{"document:documents:delete"}, {"document:documents:delete", "document:documents:read"}},
+		"restore dashboard d 3":             {{"document:documents:write"}, {"document:documents:read", "document:documents:write"}},
+		"create aws connection --name n --roleArn arn:x": {noScopes, {
+			"extensions:configurations:read", "extensions:configurations:write", "settings:objects:read", "settings:objects:write"}},
+		"describe anomaly-detector a":        {{"settings:objects:read"}, {"settings:objects:read", "storage:*:read"}},
+		"exec copilot nl2dql 'errors today'": {noScopes, {"davis-copilot:conversations:execute"}},
+		"exec copilot 'hello'":               {{"davis-copilot:conversations:execute"}, {"davis-copilot:conversations:execute"}},
+	} {
+		t.Run(command, func(t *testing.T) {
+			got, err := Parse(context.Background(), ParseRequest{Command: command, MinStability: "experimental"})
+			require.NoError(t, err)
+			assert.Equal(t, want[0], got.MinimumScopes, "minimum")
+			assert.Equal(t, want[1], got.MaximumScopes, "maximum")
 		})
 	}
 }

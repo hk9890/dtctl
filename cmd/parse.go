@@ -55,13 +55,14 @@ type ParseResult struct {
 	// --check-scopes, which does not run the command.
 	RequiresInput bool
 
-	// RequiredScopes are the token scopes the catalog names for the command,
-	// non-nil, and complete only when Scopes is "known". Scopes is "none" (the catalog names
-	// none; for a command the catalog is missing scopes for, that
-	// under-reports), "known", "per_call" (decided by the call, exec api) or
-	// "input_dependent" (decided by the input file's content, apply).
-	RequiredScopes []string
-	Scopes         string
+	// MinimumScopes are the exact scopes the command cannot run without.
+	// MaximumScopes are patterns of the scopes it can use: "*" matches any
+	// text, every other character itself. [] means no platform access (a
+	// local command, or help); ["*"] any scope the user holds. Both are
+	// non-nil, and every minimum scope matches a maximum pattern. See
+	// scopeBounds.
+	MinimumScopes []string
+	MaximumScopes []string
 }
 
 // ParseError is a command line that Execute would refuse before running the
@@ -181,10 +182,9 @@ func parseTree(root *cobra.Command, argv []string) (*ParseResult, error) {
 			executed = root
 		}
 		verb, resource := verbResource(executed)
-		return &ParseResult{
-			Verb: verb, Resource: resource, Scopes: scopeRequirementNone.String(),
-			InputFiles: []string{}, OutputFiles: []string{}, RequiredScopes: []string{},
-		}, nil
+		res := &ParseResult{Verb: verb, Resource: resource, InputFiles: []string{}, OutputFiles: []string{}}
+		res.MinimumScopes, res.MaximumScopes = noScopes()
+		return res, nil
 	}
 	return newParseResult(ran, ranArgs), nil
 }
@@ -283,9 +283,7 @@ func newParseResult(c *cobra.Command, args []string) *ParseResult {
 	res.InputFiles = append(res.InputFiles, slices.Sorted(maps.Keys(inputs))...)
 	res.OutputFiles = append(res.OutputFiles, slices.Sorted(maps.Keys(outputs))...)
 
-	required, req := scopesForInvocation(c, verb, resource)
-	res.RequiredScopes = append([]string{}, required...)
-	res.Scopes = req.String()
+	res.MinimumScopes, res.MaximumScopes = scopeBounds(c, verb, resource)
 	return res
 }
 

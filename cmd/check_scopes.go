@@ -247,22 +247,9 @@ const (
 	scopeRequirementInputDependent
 )
 
-// String names the requirement the way ParseResult.Scopes reports it.
-func (r scopeRequirement) String() string {
-	switch r {
-	case scopeRequirementKnown:
-		return "known"
-	case scopeRequirementPerCall:
-		return "per_call"
-	case scopeRequirementInputDependent:
-		return "input_dependent"
-	}
-	return "none"
-}
-
 // annotationScopes marks a command whose required scopes the catalog cannot
-// hold. Its only value is scopesInputDependent. Namespaced like pkg/stability's
-// keys.
+// hold. Its value is scopesInputDependent, scopesDQL or scopesAny
+// (scope_bounds.go). Namespaced like pkg/stability's keys.
 const (
 	annotationScopes     = "dtctl.io/scopes"
 	scopesInputDependent = "input-dependent"
@@ -496,6 +483,11 @@ func requiredScopesIn(root *cobra.Command, verb, resource string) ([]string, sco
 	if resource != "" {
 		if s, ok := v.RequiredScopesByResource[resource]; ok && len(s) > 0 {
 			return s, scopeRequirementKnown
+		}
+		// A resource with subcommands of its own (exec copilot) is a nested
+		// node in the catalog, not one of the verb's resources.
+		if sub, ok := v.Subcommands[resource]; ok && len(sub.RequiredScopes) > 0 {
+			return sub.RequiredScopes, scopeRequirementKnown
 		}
 	}
 	if len(v.RequiredScopes) > 0 { // DQL verbs (query/verify/wait)

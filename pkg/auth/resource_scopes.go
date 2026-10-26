@@ -267,6 +267,12 @@ var QueryScopes = []string{
 	"storage:security.events:read",
 }
 
+// QueryScopePattern matches every Grail read scope (storage:<table>:read,
+// storage:buckets:read, ...), "*" standing for any text. A DQL statement can
+// read any table, so it is the most a command that runs DQL can use. Every
+// entry of QueryScopes and grailExtendedReadScopes matches it.
+const QueryScopePattern = "storage:*:read"
+
 // singularize returns a basic singular form by stripping a trailing "s".
 // Mirrors pkg/commands.singularize; kept here to avoid an import cycle.
 func singularize(name string) string {
