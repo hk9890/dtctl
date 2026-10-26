@@ -80,7 +80,16 @@ func TestParse(t *testing.T) {
 			require.NoError(t, err)
 			if tc.want.Scopes == ScopesKnown && tc.want.RequiredScopes == nil {
 				assert.NotEmpty(t, got.RequiredScopes)
-				got.RequiredScopes = nil
+				got.RequiredScopes = []string{}
+			}
+			if tc.want.RequiredScopes == nil {
+				tc.want.RequiredScopes = []string{}
+			}
+			if tc.want.InputFiles == nil {
+				tc.want.InputFiles = []string{}
+			}
+			if tc.want.OutputFiles == nil {
+				tc.want.OutputFiles = []string{}
 			}
 			assert.Equal(t, &tc.want, got)
 		})

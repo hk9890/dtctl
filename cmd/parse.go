@@ -44,8 +44,8 @@ type ParseResult struct {
 	Resource string // "" when the verb takes none (apply)
 
 	// InputFiles and OutputFiles are the files the command reads and writes,
-	// as vfs.Key names, sorted and de-duplicated. A "-" value is stdin, not a
-	// file; a path to a file named "-" (./-) is the key "-".
+	// as vfs.Key names, sorted, de-duplicated and non-nil. A "-" value is
+	// stdin, not a file; a path to a file named "-" (./-) is the key "-".
 	InputFiles  []string
 	OutputFiles []string
 	// RequiresInput is true when the command reads stdin: a "-" file value,
@@ -55,7 +55,7 @@ type ParseResult struct {
 	RequiresInput bool
 
 	// RequiredScopes are the token scopes the catalog names for the command,
-	// complete only when Scopes is "known". Scopes is "none" (the catalog names
+	// non-nil, and complete only when Scopes is "known". Scopes is "none" (the catalog names
 	// none; for a command the catalog is missing scopes for, that
 	// under-reports), "known", "per_call" (decided by the call, exec api) or
 	// "input_dependent" (decided by the input file's content, apply).
@@ -180,7 +180,10 @@ func parseTree(root *cobra.Command, argv []string) (*ParseResult, error) {
 			executed = root
 		}
 		verb, resource := verbResource(executed)
-		return &ParseResult{Verb: verb, Resource: resource, Scopes: scopeRequirementNone.String()}, nil
+		return &ParseResult{
+			Verb: verb, Resource: resource, Scopes: scopeRequirementNone.String(),
+			InputFiles: []string{}, OutputFiles: []string{}, RequiredScopes: []string{},
+		}, nil
 	}
 	return newParseResult(ran, ranArgs), nil
 }
@@ -222,7 +225,7 @@ func newParseError(ctx context.Context, err error, code int) *ParseError {
 // scopes, from its parsed flags and the declarations (file_flags.go).
 func newParseResult(c *cobra.Command, args []string) *ParseResult {
 	verb, resource := verbResource(c)
-	res := &ParseResult{Verb: verb, Resource: resource}
+	res := &ParseResult{Verb: verb, Resource: resource, InputFiles: []string{}, OutputFiles: []string{}}
 	inputs, outputs := map[string]bool{}, map[string]bool{}
 	argumentGiven := false
 
@@ -272,10 +275,11 @@ func newParseResult(c *cobra.Command, args []string) *ParseResult {
 	if asksForConfirmation(c, args) {
 		res.RequiresInput = true
 	}
-	res.InputFiles, res.OutputFiles = slices.Sorted(maps.Keys(inputs)), slices.Sorted(maps.Keys(outputs))
+	res.InputFiles = append(res.InputFiles, slices.Sorted(maps.Keys(inputs))...)
+	res.OutputFiles = append(res.OutputFiles, slices.Sorted(maps.Keys(outputs))...)
 
 	required, req := scopesForInvocation(c, verb, resource)
-	res.RequiredScopes = append([]string(nil), required...)
+	res.RequiredScopes = append([]string{}, required...)
 	res.Scopes = req.String()
 	return res
 }

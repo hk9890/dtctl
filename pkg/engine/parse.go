@@ -37,9 +37,9 @@ type Parsed struct {
 	Resource string // "" when the verb takes none (apply)
 
 	// InputFiles and OutputFiles are the files the command reads and writes,
-	// named the way Request.Files and Result.Files name them (vfs.Key), sorted
-	// and de-duplicated. A "-" value is Request.Stdin, not a file; a path to a
-	// file named "-" (./-) is the key "-".
+	// named the way Request.Files and Result.Files name them (vfs.Key), sorted,
+	// de-duplicated and non-nil. A "-" value is Request.Stdin, not a file; a
+	// path to a file named "-" (./-) is the key "-".
 	InputFiles  []string
 	OutputFiles []string
 	// RequiresInput is true when the command reads Request.Stdin: a "-" file
@@ -49,7 +49,7 @@ type Parsed struct {
 	RequiresInput bool
 
 	// RequiredScopes are the token scopes the command needs, complete when
-	// Scopes is ScopesKnown.
+	// Scopes is ScopesKnown, and non-nil.
 	RequiredScopes []string
 	Scopes         ScopeRequirement
 }
