@@ -51,7 +51,8 @@ type ParseResult struct {
 	// RequiresInput is true when the command reads stdin: a "-" file value,
 	// "-d @-", a command such as query given no argument and no file, or a
 	// command that asks for confirmation (delete, restore) without --plain,
-	// --agent or the flag that skips the question.
+	// --agent or the flag that skips the question. It is false under
+	// --check-scopes, which does not run the command.
 	RequiresInput bool
 
 	// RequiredScopes are the token scopes the catalog names for the command,
@@ -274,6 +275,10 @@ func newParseResult(c *cobra.Command, args []string) *ParseResult {
 	}
 	if asksForConfirmation(c, args) {
 		res.RequiresInput = true
+	}
+	if checkScopes(cmdContext(c)) {
+		// --check-scopes prints its verdict instead of running the body.
+		res.RequiresInput = false
 	}
 	res.InputFiles = append(res.InputFiles, slices.Sorted(maps.Keys(inputs))...)
 	res.OutputFiles = append(res.OutputFiles, slices.Sorted(maps.Keys(outputs))...)

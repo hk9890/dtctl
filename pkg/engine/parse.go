@@ -46,6 +46,7 @@ type Parsed struct {
 	// argument, "-d @-", a command such as query given no argument and no
 	// file, or a command that asks for confirmation (delete, restore) without
 	// --plain, --agent or the flag that skips the question (--yes, --force).
+	// It is false under --check-scopes, which does not run the command.
 	RequiresInput bool
 
 	// RequiredScopes are the token scopes the command needs, complete when

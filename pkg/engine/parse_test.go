@@ -96,6 +96,22 @@ func TestParse(t *testing.T) {
 	}
 }
 
+// TestParse_CheckScopesReadsNoInput: --check-scopes prints a verdict and does
+// not run the command, so the command reads no input.
+func TestParse_CheckScopesReadsNoInput(t *testing.T) {
+	for _, command := range []string{
+		"delete workflow wf-1 --check-scopes",
+		"query --check-scopes",
+		"apply -f - --check-scopes",
+	} {
+		t.Run(command, func(t *testing.T) {
+			got, err := Parse(context.Background(), ParseRequest{Command: command})
+			require.NoError(t, err)
+			assert.False(t, got.RequiresInput)
+		})
+	}
+}
+
 // TestParse_Confirmation: a command that asks for confirmation reads the
 // request's input, unless the command line skips the question.
 func TestParse_Confirmation(t *testing.T) {
