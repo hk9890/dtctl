@@ -307,6 +307,15 @@ on every flag underneath it.
 1. **SDK layer** (`sdk/api/<name>/`): Create typed API wrapper with CRUD functions using `httpclient.Client`. No file I/O, no display logic.
 2. **CLI layer** (`pkg/resources/<name>/`): Create resource handler that delegates to SDK. Handle file reading, display fields, name resolution here. Read user-supplied paths through `pkg/vfs`, never `os` directly (see [Embedding Invariants](#-critical-embedding-invariants-)).
 3. **Commands**: Add to `cmd/get.go`, `cmd/describe.go`, etc. Mutating verbs need a safety check; `-f`/`--file` flags go through `vfs` and are declared with `markFileFlag` (rule 1); no `os.Exit`, no ungated subprocess. Build each command in a `newXCmd()` constructor (flags bound to variables local to it, stability tier declared inside), attach it in `init()` as usual **and** list it in `newCommandTree` in `cmd/root_factory.go`; read the run's state through `cmdContext(cmd)` (see [Embedding Invariants](#-critical-embedding-invariants-) rule 7).
+3b. **Scopes**: `engine.Parse` reports a command's scope bounds from its
+   `auth.ResourceScopes` entry (`pkg/auth/resource_scopes.go`): the entry
+   at the verb's access level is the minimum, plus the read scopes the
+   maximum. A command that never reaches the platform is `markLocal`; one
+   that runs a caller's DQL is `markScopesDQL`, one that runs other DQL
+   itself or through the server `markRunsDQL`, one whose payload or target
+   decides what is called (caller code, an analyzer) `markScopesAny`. A
+   command with neither entry nor declaration fails the build.
+   *Guard*: `go test ./cmd/ -run 'TestScopeBoundsOverTheTree|TestLocalCommandsArePinned|TestDQL|TestServerSideBoundsArePinned'`
 4. Register in resolver
 5. Add tests: `sdk/api/<name>/*_test.go` (SDK unit tests) + `test/e2e/<name>_test.go` (E2E)
 5b. **Declare the stability tier** — every command, stable ones included; the

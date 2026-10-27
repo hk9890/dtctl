@@ -118,10 +118,9 @@ what it does not cover are in [CONCURRENT_EXECUTION.md](CONCURRENT_EXECUTION.md)
 
 `engine.Parse` reports what a command line means without running it: its verb
 and resource, the files it reads and writes (as `Request.Files` names them),
-whether it reads `Request.Stdin`, and its required scopes with how certain they
-are (`none`, `known`, `per_call` for `exec api`, `input_dependent` for `apply`
-and `diff`). A host uses it as a preflight: to attach the files a command needs,
-or to tell a caller which scopes it will need, before it runs anything.
+whether it reads `Request.Stdin`, and its scope bounds. A host uses it as a
+preflight: to attach the files a command needs, or to decide the token a
+command gets, before it runs anything.
 
 It runs Execute's pipeline and stops where the command body would start. It
 builds a fresh tree, applies the same surface masks (`applySurface`: profile,
@@ -153,9 +152,33 @@ a flag that skips the question is set. `TestConfirmationPromptsAreDeclared`
 pins every `prompt.Confirm*` call to its command. A `--check-scopes` run reads
 no input, because it does not run the command body.
 
-`Scopes: none` means the catalog names no scopes for the command. For the local
-commands that is the answer; for a command the catalog is still missing scopes
-for, it under-reports.
+**Scope bounds.** `MinimumScopes` are the exact scopes a command cannot run
+without; `MaximumScopes` are patterns of the scopes it can use, where `*`
+matches any text (`auth.ScopeMatches`). A host denies a command whose minimum
+the user lacks, and restricts its token to the user's scopes that match the
+maximum. Both are always non-nil, every minimum scope matches a maximum
+pattern, and both come from fixed lists in dtctl, never from a DQL statement or
+a payload:
+
+| Command | Minimum | Maximum |
+|---|---|---|
+| local (`markLocal`: `commands`, `version`, `ctx`, ...), or `--help` | `[]` | `[]` |
+| `query`, `verify query`, `wait query`, `inventory` (`markScopesDQL`) | `[]` | `["storage:*:read"]` |
+| `apply`, `diff` (input file decides), `exec api` (per call) | `[]` | `["*"]` |
+| `exec function`, `exec analyzer`, `create`/`edit anomaly-detector` (`markScopesAny`: the payload or target decides what is called, with the caller's token) | its catalog scope | `["*"]` |
+| any other command | its catalog entry at the verb's access level, plus what a set flag adds | the minimum plus the resource's read scopes, plus `storage:*:read` for a `markRunsDQL` command (one that runs DQL itself or through the server: `exec slo`, `get lookups`) |
+
+A nested command (`create aws connection`) without an entry of its own takes
+its nearest catalogued ancestor's entry as its maximum and reports minimum
+`[]`, because that entry joins two APIs the command may not both use. A command
+with no catalog entry reports `["*"]`, never `[]`: `[]` means "no platform
+access" and is only for a command declared local. `TestScopeBoundsOverTheTree`
+pins the four commands that need a token but no scope (`auth whoami`,
+`describe api`, `get apis`, `doctor`), and `TestServerSideBoundsArePinned` the
+bounds of the commands whose calls the server carries out with the caller's
+token. A maximum that is too narrow breaks a working command; one that is too
+wide only gives the command scopes the user holds. So when the payload or the
+target decides what a command calls, its maximum is `["*"]`.
 
 ### Upstream connections are pooled across requests
 
