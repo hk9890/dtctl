@@ -147,6 +147,12 @@ What a command reads is declared next to its flags (`markFileFlag`,
 flag without a declaration fails a test. `TestParseAgreesWithExecute` runs the
 same command lines through both and holds Parse to every file Execute reads.
 
+`RequiresInput` also covers a confirmation prompt: a command declared with
+`markConfirms` (delete, restore) asks on stdin unless `--plain`, `--agent` or
+a flag that skips the question is set. `TestConfirmationPromptsAreDeclared`
+pins every `prompt.Confirm*` call to its command. A `--check-scopes` run reads
+no input, because it does not run the command body.
+
 `Scopes: none` means the catalog names no scopes for the command. For the local
 commands that is the answer; for a command the catalog is still missing scopes
 for, it under-reports.

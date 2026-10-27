@@ -531,6 +531,12 @@ filesystem, so a file flag without the declaration fails them, naming the line
 to add.
 *Guard*: `go test ./cmd/ -run 'TestFileFlagsAreDeclared|TestFileFlagAnnotationsAreValid|TestInputWithoutArgsIsDeclared|TestVFSEnvCallSitesAreKnown'`
 
+A command that asks for confirmation on stdin is declared too, with the flags
+that skip the question: `markConfirms(c, "yes", "dry-run")`. Name `dry-run`
+only where the dry run returns before the question. Parse reports such a
+command as reading stdin unless `--plain`, `--agent` or a skip flag is set.
+*Guard*: `go test ./cmd/ -run TestConfirmationPromptsAreDeclared`
+
 The test is **whose file is it**: a path the *user named* (`-f`, `--file`,
 `--data-file`, a query file, a file to `diff`, an `apply --write-id` writeback)
 is request state and must go through the seam. A path *dtctl chose* (editor temp
